@@ -1,6 +1,11 @@
+# Download
+- Links: Comming Soon
+
+# About Muzix X
 It's a Android Music Streaming App
 - Made in Android Studio
 - For Devices Android 7+
+- Offline Music Player
 
 # Features
 - It Uses Latest Material 3 <br>
