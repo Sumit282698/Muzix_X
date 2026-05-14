@@ -3,7 +3,6 @@ package com.sumit.muzixx
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,16 +21,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sumit.muzixx.ui.theme.MuzixXTheme
 
 class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        // Using a single instance of ViewModel
         val musicViewModel = MusicViewModel()
 
         val requestPermissionLauncher = registerForActivityResult(
@@ -40,7 +39,6 @@ class MainActivity : ComponentActivity() {
             if (isGranted) {
                 val offlineSongs = fetchLocalSongs(this)
                 musicViewModel.loadSongs(offlineSongs)
-            } else {
             }
         }
 
@@ -49,6 +47,7 @@ class MainActivity : ComponentActivity() {
         } else {
             requestPermissionLauncher.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
         }
+
         setContent {
             MuzixXTheme {
                 Scaffold(
@@ -56,8 +55,9 @@ class MainActivity : ComponentActivity() {
                         Column {
                             MiniPlayer(
                                 song = musicViewModel.selectedSong,
-                                onPlayPause = { }
+                                onPlayPause = { /* Playback logic tomorrow */ }
                             )
+                            MuzixBottomBar()
                         }
                     }
                 ) { innerPadding ->
@@ -95,15 +95,12 @@ fun SongList(viewModel: MusicViewModel, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun SongItem(
-    song: Song,
-    onClick: () -> Unit
-) {
+fun SongItem(song: Song, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onClick() },
+            .clickable { onClick() }, // This should work now with the import
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -124,7 +121,6 @@ fun SongItem(
     }
 }
 
-//bottom bar
 @Composable
 fun MuzixBottomBar() {
     NavigationBar(
@@ -134,7 +130,7 @@ fun MuzixBottomBar() {
     ) {
         NavigationBarItem(
             selected = true,
-            onClick = {  },
+            onClick = { },
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
             label = { Text("Home") },
             colors = NavigationBarItemDefaults.colors(
@@ -144,20 +140,19 @@ fun MuzixBottomBar() {
         )
         NavigationBarItem(
             selected = false,
-            onClick = {  },
+            onClick = { },
             icon = { Icon(Icons.Default.Search, contentDescription = "Search") },
             label = { Text("Search") }
         )
         NavigationBarItem(
             selected = false,
-            onClick = {  },
+            onClick = { },
             icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Library") },
             label = { Text("Library") }
         )
     }
 }
 
-//Player
 @Composable
 fun MiniPlayer(song: Song?, onPlayPause: () -> Unit) {
     if (song != null) {
