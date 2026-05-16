@@ -7,6 +7,7 @@ data class Song(
     val title: String,
     val artist: String,
     val data: String,
-    val uri: Uri,
-    val duration: Int
+    val duration: Long,
+    val uri: android.net.Uri,
+    val artUri: Uri?
 )
