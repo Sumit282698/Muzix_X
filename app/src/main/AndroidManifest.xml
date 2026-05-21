@@ -13,7 +13,8 @@
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Muzix X"
-        android:theme="@style/Theme.MuzixX">
+        android:theme="@style/Theme.MuzixX"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"
@@ -29,7 +30,7 @@
             android:foregroundServiceType="mediaPlayback"
             android:exported="true">
             <intent-filter>
-                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="androidx.media3.session.MediaSessionService"/>
             </intent-filter>
         </service>
     </application>

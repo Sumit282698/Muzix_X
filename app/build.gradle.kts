@@ -12,8 +12,10 @@ android {
         applicationId = "com.sumit.muzixx"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.2.0"
+
+        multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -28,6 +30,8 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -50,15 +54,26 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.compose.material.icons.extended)
-    implementation("androidx.media3:media3-exoplayer:1.5.0")
-    implementation("androidx.media3:media3-common:1.5.0")
-    implementation("androidx.media3:media3-session:1.5.0")
+
+    val media3Version = "1.5.0"
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-common:$media3Version")
+    implementation("androidx.media3:media3-session:$media3Version")
+    implementation("androidx.media3:media3-datasource-okhttp:$media3Version")
+
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.google.code.gson:gson:2.14.0")
+
     implementation("io.ktor:ktor-client-core:2.3.11")
     implementation("io.ktor:ktor-client-okhttp:2.3.11")
     implementation("io.ktor:ktor-client-content-negotiation:2.3.11")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.11")
+
+
+    implementation("com.github.teamnewpipe:NewPipeExtractor:0.26.1")
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.0.4")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
