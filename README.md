@@ -1,5 +1,7 @@
 # Muzix_X <img src="https://raw.githubusercontent.com/sumit282698/Muzix_X/master/app/src/main/app_launcher-playstore.png" width="48">
 
+Muzix_X <img src="https://raw.githubusercontent.com/sumit282698/Muzix_X/master/app/src/main/app_launcher-playstore.png" width="48">
+
 An elegant, high-performance Android music streaming and local playback application built entirely with Jetpack Compose and Material 3 design principles.
 
 [![Github All Releases](https://img.shields.io/github/downloads/sumit282698/Muzix_X/total.svg?style=flat-square)](https://github.com/sumit282698/Muzix_X/releases)
