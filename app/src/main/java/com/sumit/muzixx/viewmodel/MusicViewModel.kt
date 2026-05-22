@@ -46,6 +46,10 @@ class MusicViewModel : ViewModel() {
 
     val songs = mutableStateListOf<Song>()
     val searchResults = mutableStateListOf<Song>()
+    val trendingOnlineSongs = mutableStateListOf<Song>()
+    val trendingHitSongs = mutableStateListOf<Song>()
+    var isTrendingLoading by mutableStateOf(false)
+        private set
 
     var selectedSong by mutableStateOf<Song?>(null)
 
@@ -68,7 +72,6 @@ class MusicViewModel : ViewModel() {
                 mediaController?.let {
                     if (it.isPlaying) {
                         currentPosition = it.currentPosition
-                        // Dynamically lock the total duration bar for streaming links on the fly
                         if (totalDuration <= 0L || selectedSong?.isStreaming == true) {
                             totalDuration = it.duration.coerceAtLeast(0L)
                         }
@@ -103,7 +106,7 @@ class MusicViewModel : ViewModel() {
     }
 
     private fun savePlaylistsToStorage() {
-        val customLists = playlists.filter { it.id != "local_songs" }
+        val customLists = playlists.filter { it.id != "local_songs" && !it.id.startsWith("folder_") }
         val json = gson.toJson(customLists)
         sharedPreferences?.edit { putString("custom_playlists", json) }
     }
@@ -145,6 +148,62 @@ class MusicViewModel : ViewModel() {
     fun initializeLocalSongsPlaylist() {
         if (playlists.none { it.id == "local_songs" }) {
             playlists.add(0, Playlist(id = "local_songs", name = "Local Songs", songs = songs))
+        }
+
+        val groupedFolders = songs.groupBy { it.folderName }
+
+        groupedFolders.forEach { (folderName, folderSongs) ->
+            val generatedFolderId = "folder_$folderName"
+
+            if (playlists.none { it.id == generatedFolderId }) {
+                playlists.add(
+                    Playlist(
+                        id = generatedFolderId,
+                        name = "$folderName",
+                        songs = folderSongs
+                    )
+                )
+            }
+        }
+    }
+
+    fun loadOnlineTrendingContent() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (trendingOnlineSongs.isNotEmpty()) return@launch
+            try {
+                isTrendingLoading = true
+                val scraper = com.sumit.muzixx.data.network.YouTubeMusicScraper()
+                val liveTracks = scraper.fetchTrendingSongs()
+
+                withContext(Dispatchers.Main) {
+                    trendingOnlineSongs.clear()
+                    trendingOnlineSongs.addAll(liveTracks.take(10))
+                }
+            } catch (e: Exception) {
+                Log.e("TRENDING_VM", "Failed to pull live charts: ${e.message}")
+            } finally {
+                isTrendingLoading = false
+            }
+        }
+    }
+
+    fun loadOnlineHindiHitsContent() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (trendingHitSongs.isNotEmpty()) return@launch
+            try {
+                isTrendingLoading = true
+                val scraper = com.sumit.muzixx.data.network.YouTubeMusicScraper()
+                val liveTracks = scraper.fetchHindiHitsSongs()
+
+                withContext(Dispatchers.Main) {
+                    trendingHitSongs.clear()
+                    trendingHitSongs.addAll(liveTracks.take(10))
+                }
+            } catch (e: Exception) {
+                Log.e("Hindi_Hits_VM", "Failed to pull live charts: ${e.message}")
+            } finally {
+                isTrendingLoading = false
+            }
         }
     }
 
@@ -259,11 +318,7 @@ class MusicViewModel : ViewModel() {
                 }
 
                 selectedSong = currentTrack
-                totalDuration = if (currentTrack.isStreaming) {
-                    controller.duration.coerceAtLeast(0L)
-                } else {
-                    controller.duration.coerceAtLeast(0L)
-                }
+                totalDuration = controller.duration.coerceAtLeast(0L)
             }
         }
 

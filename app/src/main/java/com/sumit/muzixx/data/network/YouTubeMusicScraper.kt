@@ -57,6 +57,14 @@ class YouTubeMusicScraper {
         }
     }
 
+    suspend fun fetchTrendingSongs(): List<Song> {
+        return searchSongs("Trending Songs Hindi")
+    }
+
+    suspend fun fetchHindiHitsSongs(): List<Song> {
+        return searchSongs("Hindi Hits")
+    }
+
     private fun parseYouTubeHtmlJson(jsonText: String): List<Song> {
         val songList = mutableListOf<Song>()
         try {

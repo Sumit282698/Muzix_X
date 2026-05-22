@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -33,19 +34,16 @@ fun HomeScreen(
     context: Context,
     modifier: Modifier = Modifier
 ) {
-    // 💡 Grab songs from your main state cache or filter them by language/tag if your data model supports it
     val allSongs = viewModel.songs
 
-    // For now, we'll use the same list or mock subsets to show how the rows look
-    val trendingSongs = allSongs.take(6)
-    val hindiSongs = highwaySongsFilter(allSongs) // Custom filter or fallback
+    val trendingOnline = viewModel.trendingOnlineSongs
+    val hitSongs = viewModel.trendingHitSongs
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // 🔹 1. TOP HEADER ROW (Circular Icon + Home Text)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -59,54 +57,71 @@ fun HomeScreen(
                     .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = "Home Icon",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                Icon(imageVector = Icons.Default.AccountCircle, contentDescription = "Home", tint = MaterialTheme.colorScheme.onPrimaryContainer)
             }
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "Home",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            Text(text = "Home", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         }
 
-        // 🔹 2. MAIN SCROLLABLE CONTENT BODY
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
 
-            // 🔥 ROW 1: TRENDING SONGS
             item {
-                SongCarouselSection(
-                    title = "Trending Songs",
-                    songs = trendingSongs,
-                    onSongClick = { index ->
-                        viewModel.playSong(context, trendingSongs, index)
+                Column {
+                    Text(
+                        text = "Trending Songs 🔥",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                    )
+
+                    if (viewModel.isTrendingLoading) {
+                        Box(modifier = Modifier.fillMaxWidth().height(130.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
+                    } else {
+                        SongCarouselSection(
+                            title = "",
+                            songs = trendingOnline,
+                            onSongClick = { index ->
+                                viewModel.playSong(context, trendingOnline, index)
+                            }
+                        )
                     }
-                )
+                }
             }
 
-            // 🇮🇳 ROW 2: HINDI SONGS
             item {
-                SongCarouselSection(
-                    title = "Hindi Hits",
-                    songs = hindiSongs,
-                    onSongClick = { index ->
-                        viewModel.playSong(context, hindiSongs, index)
+                Column {
+                    Text(
+                        text = "Hindi Hits",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                    )
+
+                    if (viewModel.isTrendingLoading) {
+                        Box(modifier = Modifier.fillMaxWidth().height(130.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
+                    } else {
+                        SongCarouselSection(
+                            title = "",
+                            songs = hitSongs,
+                            onSongClick = { index ->
+                                viewModel.playSong(context, hitSongs, index)
+                            }
+                        )
                     }
-                )
+                }
             }
 
-            // 🎵 ROW 3: RECENTLY SCANNED / ALL LOCAL
             item {
                 SongCarouselSection(
-                    title = "Discover Local Storage",
+                    title = "Discover Local Songs",
                     songs = allSongs,
                     onSongClick = { index ->
                         viewModel.playSong(context, allSongs, index)
@@ -117,7 +132,6 @@ fun HomeScreen(
     }
 }
 
-// 🎨 COMPOSABLE FOR THE HORIZONTAL ROW SECTIONS
 @Composable
 fun SongCarouselSection(
     title: String,

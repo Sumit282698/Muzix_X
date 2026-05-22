@@ -81,6 +81,9 @@ class MainActivity : ComponentActivity() {
                     musicViewModel.initMediaController(context)
                     musicViewModel.initStorage(context)
 
+                    musicViewModel.loadOnlineTrendingContent()
+                    musicViewModel.loadOnlineHindiHitsContent()
+
                     val requiredStoragePermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         Manifest.permission.READ_MEDIA_AUDIO
                     } else {
