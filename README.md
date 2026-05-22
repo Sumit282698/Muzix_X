@@ -5,6 +5,7 @@ It's a Android Music Streaming App
 - Offline/Online Music Player
 - Playlists Support 
 - User Profile
+- Uses Youtube to fetch data 
 
 # Download
 - Downloads: [![Github All Releases](https://img.shields.io/github/downloads/sumit282698/Muzix_X/total.svg)](https://github.com/sumit282698/Muzix_X/releases)
