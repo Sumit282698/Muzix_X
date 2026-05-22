@@ -10,7 +10,7 @@ It's a Android Music Streaming App
 - Downloads: [![Github All Releases](https://img.shields.io/github/downloads/sumit282698/Muzix_X/total.svg)](https://github.com/sumit282698/Muzix_X/releases)
 - Latest Release: [![GitHub Release](https://img.shields.io/github/v/release/sumit282698/Muzix_X)](https://github.com/sumit282698/Muzix_X/releases/latest)
 
-# App Screen Shots
+# App Screenshots
 
 # Features
 - It Uses Latest Material 3 <br>
