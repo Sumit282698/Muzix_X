@@ -21,10 +21,6 @@ An elegant, high-performance Android music streaming and local playback applicat
 ## 📱 App Screenshots
 
 | Home Screen & Discovery | Active Player UI | App Update Check |
-| :---: | :---: | :---: |
-| <img src="https://raw.githubusercontent.com/sumit282698/Muzix_X/master/screenshots/home.jpg" width="240"> | <img src="https://raw.githubusercontent.com/sumit282698/Muzix_X/master/screenshots/player.jpg" width="240"> | <img src="https://raw.githubusercontent.com/sumit282698/Muzix_X/master/screenshots/updates.jpg" width="240"> |
-
-> *Note: Replace the placeholder image links above with the actual paths to your screenshots inside your repository once uploaded!*
 
 ---
 
