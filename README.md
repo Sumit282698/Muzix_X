@@ -21,6 +21,7 @@ An elegant, high-performance Android music streaming and local playback applicat
 ## 📱 App Screenshots
 
 | Home Screen & Discovery | Active Player UI | App Update Check |
+* soon
 
 ---
 
