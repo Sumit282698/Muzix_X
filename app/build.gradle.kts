@@ -17,7 +17,7 @@ android {
         //noinspection OldTargetApi
         targetSdk = 36
         versionCode = 2
-        versionName = "1.2.6"
+        versionName = "1.2.8"
 
         multiDexEnabled = true
 
@@ -48,6 +48,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -62,6 +63,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     //noinspection UseTomlInstead,GradleDependency
     implementation("androidx.datastore:datastore-core:1.1.1")
+    implementation("androidx.palette:palette-ktx:1.0.0")
     //noinspection UseTomlInstead,GradleDependency
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     //noinspection UseTomlInstead,GradleDependency

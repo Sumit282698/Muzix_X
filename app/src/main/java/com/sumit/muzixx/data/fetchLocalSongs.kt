@@ -64,7 +64,8 @@ fun fetchLocalSongs(context: Context): List<Song> {
                     artUri = artUriString,
                     duration = duration,
                     isStreaming = false,
-                    folderName = folderName
+                    folderName = folderName,
+                    type = "local"
                 )
             )
         }

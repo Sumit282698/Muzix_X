@@ -1,5 +1,6 @@
 package com.sumit.muzixx.data.network
 
+import com.sumit.muzixx.data.model.SaavnDirectSongResponse
 import com.sumit.muzixx.data.model.SaavnPlaylistResponse
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -40,7 +41,7 @@ interface JioSaavnApiService {
     @GET("api/songs/{id}")
     suspend fun getSongDetailsById(
         @Path("id") id: String
-    ): SaavnPlaylistResponse
+    ): SaavnDirectSongResponse
 
     companion object {
         private const val BASE_URL = "https://saavn.sumit.co/"
