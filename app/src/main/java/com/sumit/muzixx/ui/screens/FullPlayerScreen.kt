@@ -1,6 +1,7 @@
 package com.sumit.muzixx.ui.screens
 
 import android.graphics.drawable.BitmapDrawable
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateIntOffsetAsState
@@ -47,8 +48,10 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.sumit.muzixx.R
 import com.sumit.muzixx.viewmodel.MusicViewModel
+import com.sumit.muzixx.data.network.AudioDownloader
 import com.sumit.muzixx.utils.formatTime
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
@@ -61,6 +64,7 @@ fun FullPlayerScreen(
 ) {
     val context = LocalContext.current
     val song = viewModel.selectedSong
+    val accentColor = MaterialTheme.colorScheme.primary
 
     val defaultAccent = remember { Color(0xFF230305) }
     var dynamicAccentColor by remember { mutableStateOf(defaultAccent) }
@@ -140,9 +144,10 @@ fun FullPlayerScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showQueueSheet by remember { mutableStateOf(false) }
     var showOptionsMenu by remember { mutableStateOf(false) }
+    var navigateToAboutSong by remember {mutableStateOf(false)}
+    val coroutineScope = rememberCoroutineScope()
     var showPlaylistDialog by remember { mutableStateOf(false) }
 
-    val customRed = remember { Color(0xFFE50914) }
     val customLightGrey = remember { Color(0xFFB3B3B3) }
 
     var rawOffsetY by remember { mutableFloatStateOf(0f) }
@@ -274,7 +279,10 @@ fun FullPlayerScreen(
                     ) {
                         DropdownMenuItem(
                             text = { Text("About Song", fontWeight = FontWeight.Medium) },
-                            onClick = { showOptionsMenu = false }
+                            onClick = {
+                                showOptionsMenu = false
+                                navigateToAboutSong = true
+                            }
                         )
 
                         DropdownMenuItem(
@@ -294,7 +302,17 @@ fun FullPlayerScreen(
 
                         DropdownMenuItem(
                             text = { Text("Download", fontWeight = FontWeight.Medium) },
-                            onClick = { showOptionsMenu = false }
+                            onClick = {
+                                showOptionsMenu = false
+
+                                if (song != null) {
+                                    coroutineScope.launch {
+                                        AudioDownloader.downloadTrack(context, song)
+                                    }
+                                } else {
+                                    Toast.makeText(context, "No active track loaded to download", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                         )
                     }
                 }
@@ -340,9 +358,9 @@ fun FullPlayerScreen(
                     },
                     valueRange = 0f..(viewModel.totalDuration.toFloat().coerceAtLeast(1f)),
                     colors = SliderDefaults.colors(
-                        activeTrackColor = customRed,
+                        activeTrackColor = accentColor,
                         inactiveTrackColor = Color.White.copy(alpha = 0.12f),
-                        thumbColor = customRed
+                        thumbColor = accentColor
                     )
                 )
 
@@ -381,7 +399,7 @@ fun FullPlayerScreen(
                     modifier = Modifier
                         .size(72.dp)
                         .clip(RoundedCornerShape(22.dp))
-                        .background(if (viewModel.isPlaying) customRed else customLightGrey)
+                        .background(if (viewModel.isPlaying) accentColor else Color(0xFF2A2A2A))
                         .clickable { viewModel.togglePlayPause() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -441,6 +459,14 @@ fun FullPlayerScreen(
                 }
             }
         }
+        //About Song
+        if (navigateToAboutSong) {
+            AboutSongScreen(
+                song = song,
+                onBackClick = { navigateToAboutSong = false }
+            )
+        }
+
         //Playlist Add Button
         if (showPlaylistDialog && song != null) {
             AlertDialog(
@@ -474,12 +500,6 @@ fun FullPlayerScreen(
                                         .padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.List,
-                                        contentDescription = null,
-                                        tint = customRed,
-                                        modifier = Modifier.size(24.dp)
-                                    )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = playlist.name,
@@ -488,6 +508,7 @@ fun FullPlayerScreen(
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
+                                    Text("${playlist.songs.size} tracks", style = MaterialTheme.typography.bodyMedium, color = Color.White)
                                 }
                             }
                         }
@@ -495,7 +516,7 @@ fun FullPlayerScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { showPlaylistDialog = false }) {
-                        Text("Cancel", color = customRed)
+                        Text("Cancel", color = accentColor)
                     }
                 }
             )
@@ -540,7 +561,7 @@ fun FullPlayerScreen(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(
-                                        if (isCurrentlyPlaying) customRed.copy(alpha = 0.15f) else Color.Transparent
+                                        if (isCurrentlyPlaying) accentColor.copy(alpha = 0.15f) else Color.Transparent
                                     )
                                     .clickable {
                                         when {
@@ -570,7 +591,7 @@ fun FullPlayerScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = queueSong.title,
-                                        color = if (isCurrentlyPlaying) customRed else Color.White,
+                                        color = if (isCurrentlyPlaying) accentColor else Color.White,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         style = MaterialTheme.typography.bodyLarge,

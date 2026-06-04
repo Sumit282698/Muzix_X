@@ -1,0 +1,465 @@
+package com.sumit.muzixx.ui.screens
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.sumit.muzixx.R
+import com.sumit.muzixx.data.Playlist
+import com.sumit.muzixx.data.Song
+import com.sumit.muzixx.viewmodel.MusicViewModel
+
+@Composable
+fun LibraryLoadingOverlay(customRed: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(color = customRed)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Scanning your library tracks...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+fun PlaylistDetailView(
+    currentPlaylist: Playlist,
+    viewModel: MusicViewModel,
+    customRed: Color,
+    customLightGrey: Color,
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    onPlaybackRequest: (List<Song>, Int) -> Unit,
+    onEditRequest: (String, String) -> Unit,
+    onSongActionClick: (Song) -> Unit
+) {
+    val playlistSongs = currentPlaylist.songs
+    val isSystemPlaylist = currentPlaylist.id == "local_songs" || currentPlaylist.id.startsWith("folder_")
+
+    Column(modifier = Modifier.fillMaxWidth().background(Color.Black)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { viewModel.selectedPlaylist = null }) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = currentPlaylist.name,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+                color = Color.White
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Button(
+                onClick = { onPlaybackRequest(playlistSongs.toList().shuffled(), 0) },
+                enabled = playlistSongs.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = customRed,
+                    contentColor = Color.White,
+                    disabledContainerColor = Color(0xFF333333)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp)
+            ) {
+                Icon(Icons.Default.Shuffle, "Shuffle", modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Shuffle All",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            if (!isSystemPlaylist) {
+                FilledTonalButton(
+                    onClick = { onEditRequest(currentPlaylist.id, currentPlaylist.name) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = Color(0xFF222222),
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.size(48.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Icon(Icons.Default.Edit, "Rename", modifier = Modifier.size(20.dp), tint = Color.White)
+                }
+            }
+        }
+        HorizontalDivider(modifier = Modifier.padding(top = 12.dp), color = Color(0xFF1A1A1A))
+    }
+
+    if (playlistSongs.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("This playlist is empty.", style = MaterialTheme.typography.bodyLarge, color = customLightGrey)
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = bottomPadding),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            itemsIndexed(playlistSongs, key = { index, song -> "${song.id}_${index}" }) { index, song ->
+                LibrarySongItem(
+                    song = song,
+                    isSelected = viewModel.selectedSong?.id == song.id,
+                    currentPlaylistId = currentPlaylist.id,
+                    onActionClick = { onSongActionClick(song) },
+                    onRemoveClick = {
+                        viewModel.removeSongFromPlaylist(currentPlaylist.id, song)
+                        viewModel.selectedPlaylist = viewModel.playlists.find { it.id == currentPlaylist.id }
+                    },
+                    onClick = { onPlaybackRequest(playlistSongs.toList(), index) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LibrarySongItem(
+    song: Song,
+    isSelected: Boolean,
+    currentPlaylistId: String,
+    onActionClick: () -> Unit = {},
+    onRemoveClick: () -> Unit = {},
+    onClick: () -> Unit
+) {
+    val textColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.White
+    var showSongMenu by remember { mutableStateOf(false) }
+    val isSystemPlaylist = currentPlaylistId == "local_songs" || currentPlaylistId.startsWith("folder_")
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 8.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = song.artUri,
+            contentDescription = "Song Album Art",
+            modifier = Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF1A1A1A)),
+            error = painterResource(id = R.drawable.default_music),
+            placeholder = painterResource(id = R.drawable.default_music),
+            contentScale = ContentScale.Crop
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = song.title,
+                maxLines = 1,
+                style = MaterialTheme.typography.bodyLarge,
+                color = textColor,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = song.artist,
+                maxLines = 1,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFFB3B3B3),
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Box {
+            IconButton(onClick = { showSongMenu = true }) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "Options Menu",
+                    tint = Color(0xFFB3B3B3)
+                )
+            }
+
+            DropdownMenu(
+                expanded = showSongMenu,
+                onDismissRequest = { showSongMenu = false },
+                modifier = Modifier.background(Color(0xFF1E1E1E))
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Add to Playlist", color = Color.White) },
+                    onClick = {
+                        showSongMenu = false
+                        onActionClick()
+                    }
+                )
+
+                if (!isSystemPlaylist) {
+                    DropdownMenuItem(
+                        text = { Text("Remove from this playlist", color = MaterialTheme.colorScheme.error) },
+                        onClick = {
+                            showSongMenu = false
+                            onRemoveClick()
+                        }
+                    )
+                }
+            }
+        }
+    }
+    HorizontalDivider(color = Color(0xFF111111), thickness = 0.5.dp)
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+fun PlaylistRootListView(
+    playlists: List<Playlist>,
+    playlistPendingActionsMenu: Playlist?,
+    customRed: Color,
+    customLightGrey: Color,
+    bottomPadding: androidx.compose.ui.unit.Dp,
+    onCreateClick: () -> Unit,
+    onPlaylistSelect: (Playlist) -> Unit,
+    onPlaylistLongClick: (Playlist) -> Unit,
+    onMenuDismiss: () -> Unit,
+    onRenameTrigger: () -> Unit,
+    onDeleteTrigger: (String) -> Unit
+) {
+    TopAppBar(
+        title = { Text("Library", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) },
+        actions = {
+            IconButton(onClick = onCreateClick) {
+                Icon(Icons.Default.Add, "Create Playlist", tint = Color.White)
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Black,
+            titleContentColor = Color.White,
+            actionIconContentColor = Color.White
+        )
+    )
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, top = 0.dp, end = 16.dp, bottom = bottomPadding)
+    ) {
+        items(playlists, key = { it.id }) { playlist ->
+            val isSystemPlaylist = playlist.id == "local_songs" || playlist.id.startsWith("folder_")
+
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            onClick = { onPlaylistSelect(playlist) },
+                            onLongClick = { onPlaylistLongClick(playlist) }
+                        )
+                        .padding(vertical = 16.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Folder, null, tint = customRed, modifier = Modifier.size(28.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = playlist.name,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${playlist.songs.size} songs",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = customLightGrey
+                            )
+                        }
+                    }
+
+                    if (!isSystemPlaylist) {
+                        IconButton(onClick = { onPlaylistLongClick(playlist) }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = null,
+                                tint = customLightGrey
+                            )
+                        }
+                    }
+                }
+
+                DropdownMenu(
+                    expanded = playlistPendingActionsMenu?.id == playlist.id,
+                    onDismissRequest = onMenuDismiss,
+                    modifier = Modifier.background(Color(0xFF1E1E1E))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Rename Playlist", color = Color.White) },
+                        onClick = onRenameTrigger
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete Playlist", color = MaterialTheme.colorScheme.error) },
+                        onClick = { onDeleteTrigger(playlist.id) }
+                    )
+                }
+            }
+            HorizontalDivider(color = Color(0xFF111111), thickness = 0.5.dp)
+        }
+    }
+}
+
+@Composable
+fun PlaylistSelectorDialog(
+    playlists: List<Playlist>,
+    customGrey: Color,
+    customLightGrey: Color,
+    onDismiss: () -> Unit,
+    onPlaylistChosen: (String) -> Unit
+) {
+    val customPlaylistsOnly = playlists.filter { it.id != "local_songs" && !it.id.startsWith("folder_") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = customGrey,
+        title = { Text("Add to Playlist", color = Color.White, fontWeight = FontWeight.Bold) },
+        text = {
+            if (customPlaylistsOnly.isEmpty()) {
+                Text("Please create a custom playlist first using the '+' button.", color = customLightGrey)
+            } else {
+                LazyColumn(modifier = Modifier.heightIn(max = 250.dp)) {
+                    items(customPlaylistsOnly, key = { it.id }) { targetPlaylist ->
+                        Text(
+                            text = targetPlaylist.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPlaylistChosen(targetPlaylist.id) }
+                                .padding(vertical = 14.dp, horizontal = 8.dp)
+                        )
+                        HorizontalDivider(color = Color(0xFF222222))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Close", color = Color.Gray) }
+        }
+    )
+}
+
+@Composable
+fun RenamePlaylistDialog(
+    nameInput: String,
+    customGrey: Color,
+    customRed: Color,
+    onNameChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = customGrey,
+        title = { Text("Rename Playlist", color = Color.White, fontWeight = FontWeight.Bold) },
+        text = {
+            OutlinedTextField(
+                value = nameInput,
+                onValueChange = onNameChange,
+                label = { Text("Playlist Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = customRed, focusedLabelColor = customRed,
+                    focusedTextColor = Color.White, unfocusedTextColor = Color.White
+                )
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onSave) { Text("Save", color = customRed, fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Color.Gray) }
+        }
+    )
+}
+
+@Composable
+fun CreatePlaylistDialog(
+    nameInput: String,
+    customGrey: Color,
+    customRed: Color,
+    onNameChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onCreate: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        containerColor = customGrey,
+        title = { Text("New Playlist", color = Color.White, fontWeight = FontWeight.Bold) },
+        text = {
+            OutlinedTextField(
+                value = nameInput,
+                onValueChange = onNameChange,
+                label = { Text("Playlist Name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = customRed, focusedLabelColor = customRed,
+                    focusedTextColor = Color.White, unfocusedTextColor = Color.White
+                )
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onCreate) { Text("Create", color = customRed, fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Color.Gray) }
+        }
+    )
+}

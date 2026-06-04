@@ -53,6 +53,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        musicViewModel.initSettings(applicationContext)
+        musicViewModel.initStatsManager(applicationContext)
+        musicViewModel.initMediaController(applicationContext)
+        musicViewModel.initStorage(applicationContext)
+
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val baseHttpClient = OkHttpClient.Builder().build()
@@ -67,7 +73,7 @@ class MainActivity : ComponentActivity() {
         window.navigationBarColor = android.graphics.Color.BLACK
 
         setContent {
-            MuzixXTheme {
+            MuzixXTheme(viewModel = musicViewModel) {
                 val context = LocalContext.current
                 var currentScreen by remember { mutableStateOf("Home") }
                 var showFullPlayer by remember { mutableStateOf(false) }
@@ -108,10 +114,6 @@ class MainActivity : ComponentActivity() {
                     }
 
                     kotlinx.coroutines.withContext(Dispatchers.IO) {
-                        musicViewModel.initSettings(context)
-                        musicViewModel.initMediaController(context)
-                        musicViewModel.initStorage(context)
-                        musicViewModel.initStatsManager(context)
                         musicViewModel.loadJioSaavnHomeContent()
                     }
 
@@ -193,7 +195,7 @@ class MainActivity : ComponentActivity() {
                             onMiniPlayerClick = { showFullPlayer = true },
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
-                                .padding(bottom = 90.dp)
+                                .padding(bottom = 100.dp)
                         )
                     }
 
@@ -205,7 +207,7 @@ class MainActivity : ComponentActivity() {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black)
+                                .background(Color.Transparent)
                         ) {
                             FullPlayerScreen(
                                 viewModel = musicViewModel,

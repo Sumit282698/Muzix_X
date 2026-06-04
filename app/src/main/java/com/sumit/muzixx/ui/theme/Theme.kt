@@ -19,10 +19,10 @@ fun MuzixXTheme(
             "Neon Pink / Magenta"  -> NeonPink
             "Bright Orange"        -> BrightOrange
             "Neon Red"        -> NeonRed
-            else                   -> DefaultRed
+            else                   -> NeonRed
         }
     } else {
-        DefaultRed
+        NeonRed
     }
     val dynamicColorScheme = darkColorScheme(
         primary = activeAccent,

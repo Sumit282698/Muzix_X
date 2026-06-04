@@ -1,5 +1,6 @@
 package com.sumit.muzixx.viewmodel
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
@@ -21,8 +22,6 @@ import com.sumit.muzixx.data.network.JioSaavnApiService
 import com.sumit.muzixx.data.network.UpdateChecker
 import com.sumit.muzixx.data.model.toSong
 import com.sumit.muzixx.data.network.YouTubeAudioExtractor
-import org.schabi.newpipe.extractor.stream.StreamExtractor
-import org.schabi.newpipe.extractor.ServiceList
 import com.sumit.muzixx.data.network.YouTubeMusicScraper
 import kotlinx.coroutines.*
 
@@ -63,8 +62,11 @@ class MusicViewModel : ViewModel() {
                 if (::stats.isInitialized) stats.stopPlaybackTimer()
                 mediaStateHolder.stopTracking()
             },
-            onTrackSwitched = {
+
+            onTrackSwitched = { switchedSong ->
                 if (::stats.isInitialized) stats.incrementSongsHeardCount()
+                saveLastPlayedSong(switchedSong)
+
                 handleQueueLookaheadAutoplay()
             },
             onQueueUpdated = { updatedList ->
@@ -90,6 +92,9 @@ class MusicViewModel : ViewModel() {
     }
 
     var currentPlaybackQueue by mutableStateOf<List<Song>>(emptyList())
+        private set
+
+    var cacheSizeText by mutableStateOf("Calculating...")
         private set
 
     //UI STATE LISTS
@@ -147,11 +152,106 @@ class MusicViewModel : ViewModel() {
             Log.e("PLAYLIST_STORAGE", "Corrupted storage cleared")
             sharedPreferences?.edit { remove("custom_playlists") }
         }
+
+        if (playerController.selectedSong == null) {
+            val lastSong = loadLastPlayedSong()
+            if (lastSong != null && lastSong.id.isNotBlank()) {
+                playerController.selectedSong = lastSong
+                playerController.submitQueueToPlayer(listOf(lastSong), 0, playWhenReady = false)
+            } else {
+                currentPlaybackQueue = emptyList()
+                Log.d("INIT_STORAGE", "First time launch or clear cache sequence triggered.")
+            }
+        }
+    }
+
+    private fun saveLastPlayedSong(song: Song) {
+        sharedPreferences?.edit {
+            putString("last_song_id", song.id)
+            putString("last_song_title", song.title)
+            putString("last_song_artist", song.artist)
+            putString("last_song_uri", song.uri)
+            putString("last_song_art_uri", song.artUri)
+            putLong("last_song_duration", song.duration)
+            putBoolean("last_song_is_streaming", song.isStreaming)
+            putString("last_song_folder", song.folderName)
+            putString("last_song_type", song.type)
+        }
+    }
+
+    private fun loadLastPlayedSong(): Song? {
+        val id = sharedPreferences?.getString("last_song_id", null) ?: return null
+        val title = sharedPreferences?.getString("last_song_title", "Unknown Track") ?: "Unknown Track"
+        val artist = sharedPreferences?.getString("last_song_artist", "Unknown Artist") ?: "Unknown Artist"
+        val uri = sharedPreferences?.getString("last_song_uri", "") ?: ""
+        val artUri = sharedPreferences?.getString("last_song_art_uri", null)
+        val duration = sharedPreferences?.getLong("last_song_duration", 0L) ?: 0L
+        val isStreaming = sharedPreferences?.getBoolean("last_song_is_streaming", false) ?: false
+        val folderName = sharedPreferences?.getString("last_song_folder", "Unknown") ?: "Unknown"
+        val type = sharedPreferences?.getString("last_song_type", "local") ?: "local"
+        return Song(
+            id = id,
+            title = title,
+            artist = artist,
+            uri = uri,
+            artUri = artUri,
+            duration = duration,
+            isStreaming = isStreaming,
+            folderName = folderName,
+            type = type
+        )
     }
 
     private fun savePlaylistsToStorage() {
         val json = playlistController.getCustomPlaylistsJson()
         sharedPreferences?.edit { putString("custom_playlists", json) }
+    }
+
+    fun clearAudioCache(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val cacheDir = context.applicationContext.cacheDir
+                if (cacheDir.exists() && cacheDir.isDirectory) {
+                    cacheDir.listFiles()?.forEach { file ->
+                        file.deleteRecursively()
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    cacheSizeText = "0.00 MB"
+                    Log.d("MuzixX_Cache", "Internal application audio stream cache cleared successfully.")
+                }
+            } catch (e: Exception) {
+                Log.e("MuzixX_Cache", "Failed to clear temporary audio cache layer buffers", e)
+            }
+        }
+    }
+
+    @SuppressLint("DefaultLocale")
+    fun calculateCurrentCacheSize(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val cacheDir = context.applicationContext.cacheDir
+                var totalBytes = 0L
+                if (cacheDir.exists() && cacheDir.isDirectory) {
+                    cacheDir.walkTopDown().forEach { file ->
+                        if (file.isFile) totalBytes += file.length()
+                    }
+                }
+                val megaBytes = totalBytes.toDouble() / (1024 * 1024)
+                withContext(Dispatchers.Main) {
+                    cacheSizeText = String.format("%.2f MB", megaBytes)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { cacheSizeText = "0.00 MB" }
+            }
+        }
+    }
+
+    fun updateAppTheme(themeName: String) {
+        if (isSettingsInitialized()) {
+            settings.updateAppTheme(themeName)
+        }
     }
 
     //Data Searcher
@@ -200,10 +300,13 @@ class MusicViewModel : ViewModel() {
 
     fun loadJioSaavnHomeContent() {
         if (isTrendingLoading || isNewReleasesLoading || isHindiHitLoading) return
+
+        // 💡 FIXED: Safely write to initial Compose loader structures on Main thread context
+        isTrendingLoading = true
+        isNewReleasesLoading = true
+        isHindiHitLoading = true
+
         viewModelScope.launch(Dispatchers.IO) {
-            isTrendingLoading = true
-            isNewReleasesLoading = true
-            isHindiHitLoading = true
             try {
                 val trendingDeferred = async(Dispatchers.IO) {
                     try { jioSaavnApiService.getPlaylistDetails("932189657") } catch(e: Exception) { null }
@@ -230,9 +333,11 @@ class MusicViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e("SAAVN_HOME_ERROR", "Failed to load curated home grids: ${e.message}")
             } finally {
-                isTrendingLoading = false
-                isNewReleasesLoading = false
-                isHindiHitLoading = false
+                withContext(Dispatchers.Main) {
+                    isTrendingLoading = false
+                    isNewReleasesLoading = false
+                    isHindiHitLoading = false
+                }
             }
         }
     }
@@ -295,6 +400,20 @@ class MusicViewModel : ViewModel() {
     fun togglePlayPause() = playerController.togglePlayPause()
     fun playNext() = playerController.playNext()
     fun playPrevious() = playerController.playPrevious()
+
+    fun updateSkipSilenceLive(enabled: Boolean) {
+        if (isSettingsInitialized()) {
+            settings.updateSkipSilence(enabled)
+            playerController.setSkipSilenceOnPlayer(enabled)
+        }
+    }
+
+    fun updateNormalizeAudioLive(enabled: Boolean) {
+        if (isSettingsInitialized()) {
+            settings.updateNormalizeAudio(enabled)
+            playerController.setAudioNormalizationOnPlayer(enabled)
+        }
+    }
 
     // ========================= PLAYLIST MANIPULATION =========================
     fun createCustomPlaylist(name: String) = playlistController.createCustomPlaylist(name)

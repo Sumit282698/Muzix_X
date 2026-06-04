@@ -41,6 +41,7 @@ fun HomeScreen(
 ) {
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val accentColor = MaterialTheme.colorScheme.primary
 
     val currentUserName = if (viewModel.isSettingsInitialized()) {
         viewModel.settings.userName
@@ -186,7 +187,7 @@ private fun SongSection(
                     .height(160.dp),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Color(0xFFE50914))
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else if (songs.isEmpty()) {
             Box(

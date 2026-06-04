@@ -166,7 +166,9 @@ fun SearchScreen(
             visible = activeSongForPlaylist != null,
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it }),
-            modifier = Modifier.align(Alignment.BottomCenter)
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 96.dp)
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth().wrapContentHeight(),
@@ -182,7 +184,7 @@ fun SearchScreen(
                     ) {
                         Text(
                             text = "Add to Playlist",
-                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
                         IconButton(onClick = { activeSongForPlaylist = null }) {
@@ -223,7 +225,7 @@ fun SearchScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text(playlist.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                                    Text("${playlist.songs.size} tracks", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${playlist.songs.size} tracks", style = MaterialTheme.typography.bodyMedium, color = Color.White)
                                 }
                             }
                         }

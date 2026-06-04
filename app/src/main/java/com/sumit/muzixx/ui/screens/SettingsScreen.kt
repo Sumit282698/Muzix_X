@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -16,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,15 +32,17 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val customRed = remember { Color(0xFFE50914) }
     val customGrey = remember { Color(0xFF121212) }
     val customLightGrey = remember { Color(0xFFB3B3B3) }
+    val accentColor = MaterialTheme.colorScheme.primary
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     val streamOverWifiOnly = viewModel.settings.streamWifiOnly
     val downloadOverWifiOnly = viewModel.settings.downloadWifiOnly
     val showLyricsOnPlayer = viewModel.settings.showLyrics
     val normalizeAudio = viewModel.settings.normalizeAudio
     val skipSilence = viewModel.settings.skipSilence
+    val currentTheme by remember { derivedStateOf { viewModel.settings.appTheme } }
 
     val currentAudioQuality = viewModel.settings.audioQuality
     var showQualityDialog by remember { mutableStateOf(false) }
@@ -101,9 +106,11 @@ fun SettingsScreen(
             item {
                 SettingsClickableItem(
                     title = "Theme Options",
-                    subtitle = "Pitch Black (AMOLED optimized active)",
+                    subtitle = "Active Accent: $currentTheme (Pure AMOLED background remains locked)",
                     icon = Icons.Default.Palette
-                ) {}
+                ) {
+                    showThemeDialog = true
+                }
             }
 
             // ─── SECTION 2: MEDIA QUALITY SETTINGS ───
@@ -217,7 +224,7 @@ fun SettingsScreen(
                             Icon(
                                 imageVector = Icons.Default.Info,
                                 contentDescription = null,
-                                tint = customRed,
+                                tint = accentColor,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -233,7 +240,7 @@ fun SettingsScreen(
                         HorizontalDivider(color = Color(0xFF222222))
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        AboutRowItem(label = "Version", value = "v$appVersion", valueColor = customRed)
+                        AboutRowItem(label = "Version", value = "v$appVersion", valueColor = accentColor)
                         AboutRowItem(label = "Build Variant", value = "Release Stable", valueColor = customLightGrey)
                         AboutRowItem(label = "Developer Architecture", value = "Sumit Singh", valueColor = Color.White)
                         AboutRowItem(label = "Framework", value = "Jetpack Compose (Android)", valueColor = customLightGrey)
@@ -248,6 +255,55 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+    // Theme-Box
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text(text = "Select Accent Color", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Column(modifier = Modifier.selectableGroup()) {
+                    val themeOptions = listOf(
+                        "Electric Blue / Cyan",
+                        "Lime Green",
+                        "Vibrant Yellow",
+                        "Neon Pink / Magenta",
+                        "Bright Orange",
+                        "Neon Red"
+                    )
+
+                    themeOptions.forEach { theme ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .selectable(
+                                    selected = (theme == currentTheme),
+                                    onClick = {
+                                        viewModel.updateAppTheme(theme)
+                                        showThemeDialog = false
+                                    },
+                                    role = Role.RadioButton
+                                )
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = (theme == currentTheme),
+                                onClick = null
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(text = theme, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     // DYNAMIC AUDIO BITRATE SELECTION DIALOG
@@ -281,7 +337,7 @@ fun SettingsScreen(
                                 viewModel.settings.updateAudioQuality("96kbps")
                                 showQualityDialog = false
                             },
-                            colors = RadioButtonDefaults.colors(selectedColor = customRed, unselectedColor = Color.Gray)
+                            colors = RadioButtonDefaults.colors(selectedColor = accentColor, unselectedColor = Color.Gray)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
@@ -305,7 +361,7 @@ fun SettingsScreen(
                                 viewModel.settings.updateAudioQuality("160kbps")
                                 showQualityDialog = false
                             },
-                            colors = RadioButtonDefaults.colors(selectedColor = customRed, unselectedColor = Color.Gray)
+                            colors = RadioButtonDefaults.colors(selectedColor = accentColor, unselectedColor = Color.Gray)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
@@ -329,7 +385,7 @@ fun SettingsScreen(
                                 viewModel.settings.updateAudioQuality("320kbps")
                                 showQualityDialog = false
                             },
-                            colors = RadioButtonDefaults.colors(selectedColor = customRed, unselectedColor = Color.Gray)
+                            colors = RadioButtonDefaults.colors(selectedColor = accentColor, unselectedColor = Color.Gray)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
@@ -341,7 +397,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showQualityDialog = false }) {
-                    Text("Dismiss", color = customRed)
+                    Text("Dismiss", color = accentColor)
                 }
             }
         )
@@ -355,7 +411,7 @@ private fun SettingsHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFFE50914),
+        color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 8.dp)
@@ -405,7 +461,7 @@ private fun SettingsSwitchItem(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFFE50914),
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
                 uncheckedThumbColor = Color.Gray,
                 uncheckedTrackColor = Color(0xFF222222)
             )

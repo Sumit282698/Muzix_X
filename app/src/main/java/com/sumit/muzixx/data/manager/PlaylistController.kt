@@ -19,41 +19,38 @@ class PlaylistController(private val onSavePlaylists: () -> Unit) {
     fun loadPlaylistsFromJson(json: String?) {
         if (json.isNullOrEmpty()) return
         try {
-            val type = object : TypeToken<List<Playlist>>() {}.type
-            val savedPlaylists: List<Playlist> = gson.fromJson(json, type)
+            val typeToken = object : TypeToken<List<Playlist>>() {}.type
+            val savedPlaylists: List<Playlist> = gson.fromJson(json, typeToken)
 
             playlists.removeAll { it.id != "local_songs" && !it.id.startsWith("folder_") }
 
             savedPlaylists.forEach { playlist ->
                 val cleanedSongs = playlist.songs.map { song ->
-                    if (song.id.startsWith("yt_") || song.uri.contains("saavn") || song.isStreaming) {
-                        song.copy(uri = "")
+                    val resolvedType = if (song.type.isNullOrBlank()) {
+                        if (song.id.startsWith("yt_") || song.folderName == "YouTube Search Match") "yt"
+                        else if (song.id.trim().substringBefore("_").all { it.isDigit() } || song.folderName == "JioSaavn Stream") "saavn"
+                        else "local"
                     } else {
-                        song
+                        song.type
                     }
+
+                    song.copy(uri = "", type = resolvedType, isStreaming = resolvedType != "local")
                 }
                 playlists.add(Playlist(id = playlist.id, name = playlist.name, songs = cleanedSongs))
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            throw e
         }
     }
 
     fun getCustomPlaylistsJson(): String {
         val customLists = playlists.filter { it.id != "local_songs" && !it.id.startsWith("folder_") }
-
         val sanitizedLists = customLists.map { playlist ->
             val sanitizedSongs = playlist.songs.map { song ->
-                if (song.id.startsWith("yt_") || song.uri.contains("saavn") || song.isStreaming) {
-                    song.copy(uri = "")
-                } else {
-                    song
-                }
+                song.copy(uri = "")
             }
             playlist.copy(songs = sanitizedSongs)
         }
-
         return gson.toJson(sanitizedLists)
     }
 
@@ -70,12 +67,7 @@ class PlaylistController(private val onSavePlaylists: () -> Unit) {
         if (index != -1) {
             val targetPlaylist = playlists[index]
             if (!targetPlaylist.songs.any { it.id == song.id }) {
-                val songToSave = if (song.id.startsWith("yt_") || song.uri.contains("saavn") || song.isStreaming) {
-                    song.copy(uri = "")
-                } else {
-                    song
-                }
-
+                val songToSave = song.copy(uri = "", type = song.type)
                 val updatedSongs = targetPlaylist.songs + songToSave
                 playlists[index] = targetPlaylist.copy(songs = updatedSongs)
                 onSavePlaylists()

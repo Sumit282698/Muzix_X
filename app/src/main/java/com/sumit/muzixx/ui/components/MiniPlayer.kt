@@ -40,7 +40,7 @@ fun MiniPlayer(
 ) {
     if (song == null) return
 
-    val customRed = remember { Color(0xFFE50914) }
+    val customRed = MaterialTheme.colorScheme.primary
 
     val cardGradient = remember {
         Brush.verticalGradient(

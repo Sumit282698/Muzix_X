@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,10 +31,10 @@ fun ProfileScreen(
     modifier: Modifier = Modifier
 ) {
     // ========================= STATES =========================
-    // 🎯 LINKED TO REPOSITORY PERSISTENCE DATA ENGINE
     val currentUserName = viewModel.settings.userName
     var showEditDialog by remember { mutableStateOf(false) }
     var tempNameInput by remember { mutableStateOf("") }
+    val accentColor = MaterialTheme.colorScheme.primary
 
     var selectedTabState by remember { mutableIntStateOf(0) }
     val tabTitles = remember { listOf("This Month", "This Year", "All-Time") }
@@ -111,7 +112,6 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // 🎯 Read from preferences state
             Text(
                 text = currentUserName,
                 style = MaterialTheme.typography.headlineMedium,
@@ -135,7 +135,7 @@ fun ProfileScreen(
                     tempNameInput = currentUserName
                     showEditDialog = true
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914)),
+                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(imageVector = Icons.Default.Edit, contentDescription = null)
@@ -159,7 +159,7 @@ fun ProfileScreen(
                         Tab(
                             selected = isSelected,
                             onClick = { selectedTabState = index },
-                            selectedContentColor = Color(0xFFE50914),
+                            selectedContentColor = accentColor,
                             unselectedContentColor = Color.Gray,
                             text = {
                                 Text(
@@ -251,11 +251,11 @@ fun ProfileScreen(
                     label = { Text("User Name") },
                     shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFE50914),
+                        focusedBorderColor = accentColor,
                         unfocusedBorderColor = Color.Gray,
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        focusedLabelColor = Color(0xFFE50914),
+                        focusedLabelColor = accentColor,
                         unfocusedLabelColor = Color.Gray
                     )
                 )
@@ -269,7 +269,7 @@ fun ProfileScreen(
                         }
                         showEditDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE50914))
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
                     Text("Save", color = Color.White)
                 }
@@ -313,7 +313,7 @@ fun ProfileStatCard(
                 text = value,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFE50914),
+                color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center
             )
         }

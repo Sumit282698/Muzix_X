@@ -34,6 +34,8 @@ class SettingsRepository(
         private set
     var userName by mutableStateOf("User")
         private set
+    var appTheme by mutableStateOf("Neon Red")
+        private set
 
     init {
         // Collect individual preferences asynchronously on initialization
@@ -78,6 +80,11 @@ class SettingsRepository(
                     withContext(Dispatchers.Main) { userName = value }
                 }
             }
+            launch {
+                settingsManager.appThemeFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { appTheme = value }
+                }
+            }
         }
     }
 
@@ -115,6 +122,12 @@ class SettingsRepository(
     fun updateUserName(value: String) {
         externalScope.launch(Dispatchers.IO) {
             settingsManager.saveStringSetting(SettingsManager.USER_NAME, value)
+        }
+    }
+
+    fun updateAppTheme(value: String) {
+        externalScope.launch(Dispatchers.IO) {
+            settingsManager.saveStringSetting(SettingsManager.APP_THEME, value)
         }
     }
 }
