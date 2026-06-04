@@ -127,7 +127,6 @@ fun SettingsScreen(
                 )
             }
             item {
-                // 💡 FIXED: Dynamically reflects the correct JioSaavn quality profiles
                 val qualitySubtitle = when {
                     currentAudioQuality.contains("320") -> "Extreme (320kbps high-fidelity layout standard)"
                     currentAudioQuality.contains("160") -> "Standard (160kbps balanced audio stream setup)"
