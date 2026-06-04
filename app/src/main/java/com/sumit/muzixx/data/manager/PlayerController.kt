@@ -18,7 +18,7 @@ class PlayerController(
     private val scope: CoroutineScope,
     private val onPlaybackStarted: (Boolean, MediaController?) -> Unit,
     private val onPlaybackStopped: () -> Unit,
-    private val onTrackSwitched: () -> Unit,
+    private val onTrackSwitched: (Song) -> Unit,
     private val onQueueUpdated: (List<Song>) -> Unit,
     private val resolveYouTubeStream: suspend (Song) -> String?,
     private val jioSaavnApiService: JioSaavnApiService,
@@ -67,7 +67,9 @@ class PlayerController(
                     ?: activePlaybackQueue[exoIndex]
 
                 selectedSong = matchedSong
-                onTrackSwitched()
+
+                // 💡 UPDATED: Pass matchedSong safely out to the callback trigger pipeline
+                onTrackSwitched(matchedSong)
 
                 if (matchedSong.uri.isBlank()) {
                     resolveAndPlayTrackOnDemand(matchedSong, exoIndex)
@@ -103,17 +105,69 @@ class PlayerController(
             return song.uri
         }
 
-        if (song.id.startsWith("yt_") || !song.id.all { it.isDigit() }) {
-            return resolveYouTubeStream(song) ?: ""
+        val explicitType = song.type.lowercase().trim()
+        val rawId = song.id.trim()
+
+        val cleanId = if (rawId.contains("_") && explicitType != "yt") {
+            rawId.substringBefore("_")
+        } else {
+            rawId
         }
 
-        return try {
-            val response = jioSaavnApiService.getSongDetailsById(song.id)
-            response.data?.songs?.firstOrNull()?.downloadUrl ?: ""
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed retrieving JioSaavn media endpoint", e)
-            ""
-        } as String
+        val isSaavn = explicitType == "saavn" || (explicitType.isBlank() && cleanId.all { it.isDigit() })
+        val isYoutube = explicitType == "yt" || (explicitType.isBlank() && cleanId.startsWith("yt_"))
+
+        return when {
+            isYoutube -> {
+                Log.d(TAG, "Resolving stream link from YouTube ID: $cleanId")
+                resolveYouTubeStream(song) ?: ""
+            }
+            isSaavn -> {
+                var saavnUrl = ""
+                try {
+                    Log.d(TAG, "Resolving stream link via JioSaavn for ID: $cleanId")
+                    val response = jioSaavnApiService.getSongDetailsById(cleanId)
+                    val trackData = response.data?.firstOrNull()
+                    val downloadUrls = trackData?.downloadUrl ?: emptyList()
+
+                    // Fetch the user's active quality preference string
+                    val preferredQuality = getAudioQualityPreference()
+                    Log.d(TAG, "User preferred audio quality setting is: $preferredQuality")
+
+                    saavnUrl = when {
+                        downloadUrls.isEmpty() -> ""
+
+                        preferredQuality.contains("96") -> {
+                            downloadUrls.find { it.quality?.contains("96kbps") == true }?.url
+                                ?: downloadUrls.firstOrNull()?.url
+                                ?: ""
+                        }
+                        preferredQuality.contains("160") -> {
+                            downloadUrls.find { it.quality?.contains("160kbps") == true }?.url
+                                ?: downloadUrls.getOrNull(downloadUrls.size / 2)?.url
+                                ?: downloadUrls.firstOrNull()?.url
+                                ?: ""
+                        }
+                        preferredQuality.contains("320") -> {
+                            downloadUrls.find { it.quality?.contains("320kbps") == true }?.url
+                                ?: downloadUrls.lastOrNull()?.url
+                                ?: ""
+                        }
+                        else -> {
+                            downloadUrls.lastOrNull()?.url ?: ""
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed retrieving JioSaavn media endpoint", e)
+                    saavnUrl = ""
+                }
+                saavnUrl
+            }
+            else -> {
+                Log.d(TAG, "Playing local asset path: ${song.uri}")
+                song.uri
+            }
+        }
     }
 
     private fun resolveAndPlayTrackOnDemand(song: Song, engineIndex: Int) {
@@ -134,8 +188,6 @@ class PlayerController(
     }
 
     private fun buildMediaItem(song: Song, streamUrl: String): MediaItem {
-        // CRITICAL PROTECTION: If streamUrl is empty or matches raw ID, fallback to an explicit
-        // placeholder domain so ExoPlayer fails with a network exception instead of trying to read local file paths.
         val safeUri = if (streamUrl.isBlank() || streamUrl == song.id) {
             "https://localhost/placeholder.mp3"
         } else {
@@ -156,7 +208,7 @@ class PlayerController(
             .build()
     }
 
-    fun submitQueueToPlayer(songList: List<Song>, startIndex: Int) {
+    fun submitQueueToPlayer(songList: List<Song>, startIndex: Int, playWhenReady: Boolean = true) {
         if (songList.isEmpty() || startIndex !in songList.indices) return
 
         val controller = mediaController ?: run {
@@ -164,7 +216,6 @@ class PlayerController(
             return
         }
 
-        // 1. Immediately update local tracking arrays
         activePlaybackQueue.clear()
         activePlaybackQueue.addAll(songList)
         activePlaylistIndex = startIndex
@@ -172,41 +223,35 @@ class PlayerController(
 
         val targetedSong = activePlaybackQueue[activePlaylistIndex]
 
-        // 2. Launch in your ViewModel's scope to resolve the stream BEFORE giving it to ExoPlayer
         scope.launch {
             Log.d(TAG, "Resolving URL path for initial track: ${targetedSong.title}")
+            val resolvedUri = withContext(Dispatchers.IO) { resolveSongUri(targetedSong) }
 
-            // This runs your ViewModel lambda on a background worker thread
-            val resolvedUri = withContext(Dispatchers.IO) {
-                resolveSongUri(targetedSong)
-            }
-
-            // 3. Jump back to Main Thread to update player configuration
             withContext(Dispatchers.Main) {
-                if (resolvedUri.isBlank()) {
-                    Log.e(TAG, "Failed to extract valid web stream URL for track: ${targetedSong.title}")
-                    return@withContext
-                }
+                val finalUri = if (resolvedUri.isBlank()) targetedSong.uri else resolvedUri
 
-                // Inject the working streaming address directly into your queue item array
                 if (activePlaylistIndex in activePlaybackQueue.indices) {
-                    activePlaybackQueue[activePlaylistIndex] = targetedSong.copy(uri = resolvedUri)
+                    activePlaybackQueue[activePlaylistIndex] = targetedSong.copy(uri = finalUri)
                 }
 
-                // 4. Build the ExoPlayer array list using our placeholder safety mapping strategy
                 val mediaItems = activePlaybackQueue.mapIndexed { index, song ->
-                    val streamUrl = if (index == activePlaylistIndex) resolvedUri else song.uri
+                    val streamUrl = if (index == activePlaylistIndex) finalUri else song.uri
                     buildMediaItem(song, streamUrl)
                 }
 
-                // 5. Initialize engine playback safely with a verified web address
                 controller.stop()
                 controller.setMediaItems(mediaItems, activePlaylistIndex, 0L)
                 controller.prepare()
-                controller.play()
-                Log.d(TAG, "ExoPlayer playback initialized successfully.")
 
-                // 6. Pre-fetch upcoming song link in background to keep transitions lightning fast
+                if (playWhenReady) {
+                    controller.play()
+                    Log.d(TAG, "ExoPlayer playback initialized successfully.")
+                } else {
+                    controller.pause()
+                    Log.d(TAG, "ExoPlayer track hydrated silently for persistence setup.")
+                }
+
+                // Prefetch next track sequence...
                 val nextIndex = activePlaylistIndex + 1
                 if (nextIndex in activePlaybackQueue.indices) {
                     val nextSong = activePlaybackQueue[nextIndex]
@@ -232,6 +277,44 @@ class PlayerController(
 
         val newMediaItems = suggestedSongs.map { buildMediaItem(it, it.uri) }
         controller.addMediaItems(oldSize, newMediaItems)
+    }
+
+    fun setSkipSilenceOnPlayer(enabled: Boolean) {
+        scope.launch(Dispatchers.Main) {
+            try {
+                mediaController?.let { controller ->
+                    if (controller.isCommandAvailable(Player.COMMAND_SET_TRACK_SELECTION_PARAMETERS)) {
+
+                    }
+
+                    val args = android.os.Bundle().apply { putBoolean("enabled", enabled) }
+                    controller.sendCustomCommand(
+                        androidx.media3.session.SessionCommand("ACTION_SET_SKIP_SILENCE", android.os.Bundle.EMPTY),
+                        args
+                    )
+                    Log.d("PlayerController", "Dispatched live Skip Silence event down to service channel: $enabled")
+                }
+            } catch (e: Exception) {
+                Log.e("PlayerController", "Failed setting live hardware Skip Silence filter modification", e)
+            }
+        }
+    }
+
+    fun setAudioNormalizationOnPlayer(enabled: Boolean) {
+        scope.launch(Dispatchers.Main) {
+            try {
+                mediaController?.let { controller ->
+                    val args = android.os.Bundle().apply { putBoolean("enabled", enabled) }
+                    controller.sendCustomCommand(
+                        androidx.media3.session.SessionCommand("ACTION_SET_NORMALIZATION", android.os.Bundle.EMPTY),
+                        args
+                    )
+                    Log.d("PlayerController", "Dispatched live Normalization event down to service channel: $enabled")
+                }
+            } catch (e: Exception) {
+                Log.e("PlayerController", "Failed setting live audio Normalization equalizer filter state", e)
+            }
+        }
     }
 
     fun seekTo(position: Long) {
