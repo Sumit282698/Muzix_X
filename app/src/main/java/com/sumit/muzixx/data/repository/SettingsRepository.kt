@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SettingsRepository(
     context: Context,
@@ -37,14 +38,46 @@ class SettingsRepository(
     init {
         // Collect individual preferences asynchronously on initialization
         externalScope.launch(Dispatchers.IO) {
-            launch { settingsManager.streamWifiOnlyFlow.collectLatest { streamWifiOnly = it } }
-            launch { settingsManager.downloadWifiOnlyFlow.collectLatest { downloadWifiOnly = it } }
-            launch { settingsManager.showLyricsFlow.collectLatest { showLyrics = it } }
-            launch { settingsManager.normalizeAudioFlow.collectLatest { normalizeAudio = it } }
-            launch { settingsManager.skipSilenceFlow.collectLatest { skipSilence = it } }
-            launch { settingsManager.checkUpdatesOnStartFlow.collectLatest { checkUpdatesOnStart = it } }
-            launch { settingsManager.audioQualityFlow.collectLatest { audioQuality = it } }
-            launch { settingsManager.userNameFlow.collectLatest { userName = it } }
+            launch {
+                settingsManager.streamWifiOnlyFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { streamWifiOnly = value }
+                }
+            }
+            launch {
+                settingsManager.downloadWifiOnlyFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { downloadWifiOnly = value }
+                }
+            }
+            launch {
+                settingsManager.showLyricsFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { showLyrics = value }
+                }
+            }
+            launch {
+                settingsManager.normalizeAudioFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { normalizeAudio = value }
+                }
+            }
+            launch {
+                settingsManager.skipSilenceFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { skipSilence = value }
+                }
+            }
+            launch {
+                settingsManager.checkUpdatesOnStartFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { checkUpdatesOnStart = value }
+                }
+            }
+            launch {
+                settingsManager.audioQualityFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { audioQuality = value }
+                }
+            }
+            launch {
+                settingsManager.userNameFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { userName = value }
+                }
+            }
         }
     }
 

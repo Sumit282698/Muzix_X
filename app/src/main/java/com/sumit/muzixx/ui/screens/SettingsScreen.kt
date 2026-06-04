@@ -51,12 +51,15 @@ fun SettingsScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.calculateCurrentCacheSize(context)
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // ─── SETTINGS ───
         TopAppBar(
             title = {
                 Text(
@@ -124,13 +127,17 @@ fun SettingsScreen(
                 )
             }
             item {
+                // 💡 FIXED: Dynamically reflects the correct JioSaavn quality profiles
+                val qualitySubtitle = when {
+                    currentAudioQuality.contains("320") -> "Extreme (320kbps high-fidelity layout standard)"
+                    currentAudioQuality.contains("160") -> "Standard (160kbps balanced audio stream setup)"
+                    currentAudioQuality.contains("96")  -> "Data Saver (96kbps low data consumption setup)"
+                    else -> "Standard ($currentAudioQuality standard configuration layout)"
+                }
+
                 SettingsClickableItem(
                     title = "Audio Streaming Quality",
-                    subtitle = if (currentAudioQuality == "320kbps") {
-                        "High (320kbps AAC audio streaming layout standard)"
-                    } else {
-                        "Standard (120kbps data-saving stream setup)"
-                    },
+                    subtitle = qualitySubtitle,
                     icon = Icons.Default.HighQuality
                 ) {
                     showQualityDialog = true
@@ -145,7 +152,7 @@ fun SettingsScreen(
                     subtitle = "Adjust volume levels across all tracks to match uniformly",
                     icon = Icons.Default.Equalizer,
                     checked = normalizeAudio,
-                    onCheckedChange = { viewModel.settings.updateNormalizeAudio(it) }
+                    onCheckedChange = { viewModel.updateNormalizeAudioLive(it) }
                 )
             }
             item {
@@ -154,7 +161,7 @@ fun SettingsScreen(
                     subtitle = "Automatically skip dead air/silent parts at the end or start of files",
                     icon = Icons.Default.SkipNext,
                     checked = skipSilence,
-                    onCheckedChange = { viewModel.settings.updateSkipSilence(it) }
+                    onCheckedChange = { viewModel.updateSkipSilenceLive(it) }
                 )
             }
 
@@ -163,10 +170,10 @@ fun SettingsScreen(
             item {
                 SettingsClickableItem(
                     title = "Clear Audio Cache",
-                    subtitle = "Free up storage by clearing temporarily streamed image arts and audio buffers",
+                    subtitle = "Free up storage by clearing temporarily streamed image arts and audio buffers (${viewModel.cacheSizeText})",
                     icon = Icons.Default.Delete
                 ) {
-                    //Cache layer logic placement
+                    viewModel.clearAudioCache(context)
                 }
             }
 
@@ -244,7 +251,7 @@ fun SettingsScreen(
         }
     }
 
-    //DYNAMIC AUDIO BITRATE SELECTION DIALOG
+    // DYNAMIC AUDIO BITRATE SELECTION DIALOG
     if (showQualityDialog) {
         AlertDialog(
             onDismissRequest = { showQualityDialog = false },
@@ -263,27 +270,50 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                viewModel.settings.updateAudioQuality("120kbps")
+                                viewModel.settings.updateAudioQuality("96kbps")
                                 showQualityDialog = false
                             }
                             .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = (currentAudioQuality == "120kbps"),
+                            selected = (currentAudioQuality == "96kbps"),
                             onClick = {
-                                viewModel.settings.updateAudioQuality("120kbps")
+                                viewModel.settings.updateAudioQuality("96kbps")
                                 showQualityDialog = false
                             },
                             colors = RadioButtonDefaults.colors(selectedColor = customRed, unselectedColor = Color.Gray)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("Standard (120kbps)", color = Color.White, style = MaterialTheme.typography.bodyLarge)
-                            Text("Saves mobile data limits", color = customLightGrey, style = MaterialTheme.typography.bodySmall)
+                            Text("Data Saver (96kbps)", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                            Text("Aggressive data compression saving layout", color = customLightGrey, style = MaterialTheme.typography.bodySmall)
                         }
                     }
-
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.settings.updateAudioQuality("160kbps")
+                                showQualityDialog = false
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (currentAudioQuality == "160kbps"),
+                            onClick = {
+                                viewModel.settings.updateAudioQuality("160kbps")
+                                showQualityDialog = false
+                            },
+                            colors = RadioButtonDefaults.colors(selectedColor = customRed, unselectedColor = Color.Gray)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text("Balanced (160kbps)", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                            Text("Standard balanced stream performance quality", color = customLightGrey, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -304,8 +334,8 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("High (320kbps)", color = Color.White, style = MaterialTheme.typography.bodyLarge)
-                            Text("Crystal clear high-fidelity audio", color = customLightGrey, style = MaterialTheme.typography.bodySmall)
+                            Text("Extreme High (320kbps)", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                            Text("Crystal clear high-fidelity audio stream", color = customLightGrey, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -319,8 +349,7 @@ fun SettingsScreen(
     }
 }
 
-//SUB-ITEMS
-
+// SUB-ITEMS
 @Composable
 private fun SettingsHeader(title: String) {
     Text(
