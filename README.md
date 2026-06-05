@@ -39,7 +39,8 @@ An elegant, high-performance Android music streaming and local playback applicat
 
 ## 📦 Installation & Download
 
-To install the latest stable production build, head directly over to the releases section or click the link below:
+* Some Older Releases are Removed.
+* To install the latest stable production build, head directly over to the releases section or click the link below:
 
 👉 **[Download Latest Muzix_X APK](https://github.com/sumit282698/Muzix_X/releases/latest)**
 
