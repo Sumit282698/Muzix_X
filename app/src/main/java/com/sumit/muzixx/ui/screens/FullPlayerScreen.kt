@@ -49,6 +49,8 @@ import coil.request.SuccessResult
 import com.sumit.muzixx.R
 import com.sumit.muzixx.viewmodel.MusicViewModel
 import com.sumit.muzixx.data.network.AudioDownloader
+import com.sumit.muzixx.data.model.RepeatMode
+import com.sumit.muzixx.ui.components.PlaylistSelectorContent
 import com.sumit.muzixx.utils.formatTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -64,6 +66,7 @@ fun FullPlayerScreen(
 ) {
     val context = LocalContext.current
     val song = viewModel.selectedSong
+    val repeatMode = viewModel.currentRepeatMode
     val accentColor = MaterialTheme.colorScheme.primary
 
     val defaultAccent = remember { Color(0xFF230305) }
@@ -222,98 +225,104 @@ fun FullPlayerScreen(
                     .background(Color.White.copy(alpha = 0.25f))
             )
 
-            //ALBUM ART WORKSPACE
+            //ALBUM ART
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = song?.artUri,
-                    contentDescription = "Album Art",
+                Box(
                     modifier = Modifier
                         .fillMaxWidth(0.88f)
                         .aspectRatio(1f)
-                        .shadow(
-                            elevation = 32.dp,
-                            shape = RoundedCornerShape(24.dp),
-                            clip = false,
-                            ambientColor = animatedAccentColor.copy(alpha = 0.4f),
-                            spotColor = animatedAccentColor.copy(alpha = 0.6f)
-                        )
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color(0xFF141414)),
-                    error = painterResource(id = R.drawable.default_music),
-                    placeholder = painterResource(id = R.drawable.default_music),
-                    contentScale = ContentScale.Crop
-                )
+                ) {
+                    AsyncImage(
+                        model = song?.artUri,
+                        contentDescription = "Album Art",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .shadow(
+                                elevation = 32.dp,
+                                shape = RoundedCornerShape(24.dp),
+                                clip = false,
+                                ambientColor = animatedAccentColor.copy(alpha = 0.4f),
+                                spotColor = animatedAccentColor.copy(alpha = 0.6f)
+                            )
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(Color(0xFF141414)),
+                        error = painterResource(id = R.drawable.default_music),
+                        placeholder = painterResource(id = R.drawable.default_music),
+                        contentScale = ContentScale.Crop
+                    )
 
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                ){
-                    IconButton(
-                        onClick = { showOptionsMenu = true },
+                    Box(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(16.dp)
-                            .background(
-                                color = Color.Black.copy(alpha = 0.4f),
-                                shape = CircleShape
+                            .padding(4.dp)
+                            .wrapContentSize()
+                    ) {
+                        IconButton(
+                            onClick = { showOptionsMenu = true },
+                            modifier = Modifier
+                                .background(
+                                    color = Color.Transparent,
+                                    shape = CircleShape
+                                )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Song Information Options Menu",
+                                tint = Color.White
                             )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "Song Information Options Menu",
-                            tint = Color.White
-                        )
-                    }
+                        }
 
-                    DropdownMenu(
-                        expanded = showOptionsMenu,
-                        onDismissRequest = { showOptionsMenu = false },
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.clip(RoundedCornerShape(12.dp))
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("About Song", fontWeight = FontWeight.Medium) },
-                            onClick = {
-                                showOptionsMenu = false
-                                navigateToAboutSong = true
-                            }
-                        )
-
-                        DropdownMenuItem(
-                            text = { Text("Lyrics", fontWeight = FontWeight.Medium) },
-                            onClick = { showOptionsMenu = false}
-                        )
-
-                        DropdownMenuItem(
-                            text = { Text("Add to Playlist", fontWeight = FontWeight.Medium) },
-                            onClick = {
-                                showOptionsMenu = false
-                                if (song != null) {
-                                    showPlaylistDialog = true
+                        DropdownMenu(
+                            expanded = showOptionsMenu,
+                            onDismissRequest = { showOptionsMenu = false },
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("About Song", fontWeight = FontWeight.Medium) },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    navigateToAboutSong = true
                                 }
-                            }
-                        )
+                            )
 
-                        DropdownMenuItem(
-                            text = { Text("Download", fontWeight = FontWeight.Medium) },
-                            onClick = {
-                                showOptionsMenu = false
+                            DropdownMenuItem(
+                                text = { Text("Lyrics", fontWeight = FontWeight.Medium) },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    Toast.makeText(context, "Lyrics are Unavailable", Toast.LENGTH_SHORT).show()
+                                }
+                            )
 
-                                if (song != null) {
-                                    coroutineScope.launch {
-                                        AudioDownloader.downloadTrack(context, song)
+                            DropdownMenuItem(
+                                text = { Text("Add to Playlist", fontWeight = FontWeight.Medium) },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    if (song != null) {
+                                        showPlaylistDialog = true
                                     }
-                                } else {
-                                    Toast.makeText(context, "No active track loaded to download", Toast.LENGTH_SHORT).show()
                                 }
-                            }
-                        )
+                            )
+
+                            DropdownMenuItem(
+                                text = { Text("Download", fontWeight = FontWeight.Medium) },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    if (song != null && viewModel.isSettingsInitialized()) {
+                                        coroutineScope.launch {
+                                            AudioDownloader.downloadTrack(context, song, viewModel.settings)
+                                        }
+                                    } else if (song == null) {
+                                        Toast.makeText(context, "No active track loaded to download", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -436,15 +445,22 @@ fun FullPlayerScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val isRepeatOneEnabled = false
-
                 // Left: Loop Toggle
-                IconButton(onClick = { /*Loop*/ }) {
+                IconButton(
+                    onClick = { viewModel.toggleRepeatMode() },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    val icon = if (repeatMode == RepeatMode.ONE) Icons.Default.RepeatOne else Icons.Default.Repeat
+                    val tint = when (repeatMode) {
+                        RepeatMode.OFF -> Color.White.copy(alpha = 0.5f)
+                        RepeatMode.ALL -> accentColor
+                        RepeatMode.ONE -> accentColor
+                    }
                     Icon(
-                        imageVector = if (isRepeatOneEnabled) Icons.Default.RepeatOne else Icons.Default.Repeat,
-                        contentDescription = "Loop Modes",
-                        tint = customLightGrey,
-                        modifier = Modifier.size(24.dp)
+                            imageVector = icon,
+                    contentDescription = "Cycle Playback Loop Repeat Settings",
+                    tint = tint,
+                    modifier = Modifier.size(24.dp)
                     )
                 }
 
@@ -469,57 +485,29 @@ fun FullPlayerScreen(
 
         //Playlist Add Button
         if (showPlaylistDialog && song != null) {
-            AlertDialog(
+            ModalBottomSheet(
                 onDismissRequest = { showPlaylistDialog = false },
-                containerColor = Color(0xFF161616),
-                title = {
-                    Text("Add to Playlist", color = Color.White, fontWeight = FontWeight.Bold)
-                },
-                text = {
-                    if (userCreatedPlaylists.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("No custom playlists found", color = customLightGrey)
+                sheetState = sheetState,
+                containerColor = Color(0xFF0F0F0F),
+                dragHandle = { BottomSheetDefaults.DragHandle(color = Color.White.copy(alpha = 0.2f)) }
+            ) {
+                PlaylistSelectorContent(
+                    song = song,
+                    playlists = userCreatedPlaylists,
+                    onPlaylistSelected = { playlist ->
+                        viewModel.addSongToPlaylist(playlist.id, song)
+                        coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
+                            showPlaylistDialog = false
                         }
-                    } else {
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp)
-                        ) {
-                            itemsIndexed(userCreatedPlaylists) { _, playlist ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable {
-                                            viewModel.addSongToPlaylist(playlist.id, song)
-                                            showPlaylistDialog = false
-                                        }
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = playlist.name,
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text("${playlist.songs.size} tracks", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                                }
-                            }
+                    },
+                    onCloseClick = {
+                        coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
+                            showPlaylistDialog = false
                         }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showPlaylistDialog = false }) {
-                        Text("Cancel", color = accentColor)
-                    }
-                }
-            )
+                    },
+                    modifier = Modifier.navigationBarsPadding()
+                )
+            }
         }
 
         //NATIVE STREAM TRACK QUEUE DRAWER
