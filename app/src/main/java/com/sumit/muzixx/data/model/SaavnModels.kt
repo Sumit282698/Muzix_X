@@ -16,9 +16,25 @@ data class SaavnDirectSongResponse(
 data class SaavnPlaylistData(
     @SerializedName("id") val id: String?,
     @SerializedName("name") val name: String?,
-
-    // 💡 FIXED: This tells Gson to look for EITHER "results" (Search API) OR "songs" (Playlist/Home API)
     @SerializedName("songs", alternate = ["results"]) val songs: List<SaavnTrackData>?
+)
+//Saavn Playlist Search Response
+data class SaavnPlaylistSearchResponse(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: SaavnPlaylistSearchData?
+)
+
+data class SaavnPlaylistSearchData(
+    @SerializedName("results") val results: List<SaavnCloudPlaylistObject>?
+)
+
+data class SaavnCloudPlaylistObject(
+    @SerializedName("id") val id: String?,
+    @SerializedName("name") val name: String?,
+    @SerializedName("type") val type: String?,
+    @SerializedName("songCount") val songCount: Int?,
+    @SerializedName("username") val username: String?,
+    @SerializedName("image") val image: List<SaavnImageObject>?
 )
 
 // Main Track Data Class used across Search, Playlists, and Recommendations
