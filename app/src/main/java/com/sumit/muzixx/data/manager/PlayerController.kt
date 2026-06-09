@@ -1,17 +1,24 @@
+@file:Suppress("ControlFlowWithEmptyBody", "KotlinConstantConditions")
+
 package com.sumit.muzixx.data.manager
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.*
 import androidx.core.net.toUri
 import androidx.media3.common.*
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.sumit.muzixx.data.Song
 import com.sumit.muzixx.services.PlaybackService
 import com.sumit.muzixx.data.network.JioSaavnApiService
+import com.sumit.muzixx.data.model.RepeatMode
+import com.sumit.muzixx.utils.NetworkUtils.isWifiConnected
 import kotlinx.coroutines.*
 
 class PlayerController(
@@ -22,7 +29,8 @@ class PlayerController(
     private val onQueueUpdated: (List<Song>) -> Unit,
     private val resolveYouTubeStream: suspend (Song) -> String?,
     private val jioSaavnApiService: JioSaavnApiService,
-    private val getAudioQualityPreference: () -> String
+    private val getAudioQualityPreference: () -> String,
+    private val getStreamWifiOnlyPreference: () -> Boolean
 ) {
 
     companion object {
@@ -35,13 +43,20 @@ class PlayerController(
     var currentPosition by mutableLongStateOf(0L)
     var totalDuration by mutableLongStateOf(0L)
 
+    private var contextRef: Context? = null
+
     var activePlaybackQueue = mutableStateListOf<Song>()
         private set
 
     var activePlaylistIndex by mutableIntStateOf(0)
         private set
 
+    var currentRepeatMode by mutableStateOf(RepeatMode.OFF)
+        private set
+
     fun initMediaController(context: Context) {
+        this.contextRef = context.applicationContext
+
         val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
         val controllerFuture = MediaController.Builder(context, token).buildAsync()
         controllerFuture.addListener({
@@ -68,7 +83,6 @@ class PlayerController(
 
                 selectedSong = matchedSong
 
-                // 💡 UPDATED: Pass matchedSong safely out to the callback trigger pipeline
                 onTrackSwitched(matchedSong)
 
                 if (matchedSong.uri.isBlank()) {
@@ -101,7 +115,7 @@ class PlayerController(
     }
 
     private suspend fun resolveSongUri(song: Song): String {
-        if (song.uri.isNotBlank() && (song.uri.startsWith("http") || song.uri.startsWith("content://"))) {
+        if (song.uri.isNotBlank() && song.uri.startsWith("content://")) {
             return song.uri
         }
 
@@ -117,20 +131,36 @@ class PlayerController(
         val isSaavn = explicitType == "saavn" || (explicitType.isBlank() && cleanId.all { it.isDigit() })
         val isYoutube = explicitType == "yt" || (explicitType.isBlank() && cleanId.startsWith("yt_"))
 
+        if (isYoutube || isSaavn || song.uri.startsWith("http")) {
+            val streamWifiOnly = getStreamWifiOnlyPreference()
+            contextRef?.let { ctx ->
+                if (streamWifiOnly && !isWifiConnected(ctx)) {
+                    Log.w(TAG, "Streaming blocked: 'Stream over Wi-Fi only' condition unmet.")
+
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            ctx,
+                            "Streaming restricted to Wi-Fi connection only.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    return ""
+                }
+            }
+        }
         return when {
             isYoutube -> {
                 Log.d(TAG, "Resolving stream link from YouTube ID: $cleanId")
                 resolveYouTubeStream(song) ?: ""
             }
             isSaavn -> {
-                var saavnUrl = ""
+                var saavnUrl: String
                 try {
                     Log.d(TAG, "Resolving stream link via JioSaavn for ID: $cleanId")
                     val response = jioSaavnApiService.getSongDetailsById(cleanId)
                     val trackData = response.data?.firstOrNull()
                     val downloadUrls = trackData?.downloadUrl ?: emptyList()
 
-                    // Fetch the user's active quality preference string
                     val preferredQuality = getAudioQualityPreference()
                     Log.d(TAG, "User preferred audio quality setting is: $preferredQuality")
 
@@ -174,7 +204,7 @@ class PlayerController(
         val controller = mediaController ?: return
         scope.launch {
             val resolvedUri = resolveSongUri(song)
-            if (!resolvedUri.isNullOrBlank()) {
+            if (resolvedUri.isNotBlank()) {
                 withContext(Dispatchers.Main) {
                     if (engineIndex in activePlaybackQueue.indices && activePlaybackQueue[engineIndex].id == song.id) {
                         activePlaybackQueue[engineIndex] = song.copy(uri = resolvedUri)
@@ -228,7 +258,7 @@ class PlayerController(
             val resolvedUri = withContext(Dispatchers.IO) { resolveSongUri(targetedSong) }
 
             withContext(Dispatchers.Main) {
-                val finalUri = if (resolvedUri.isBlank()) targetedSong.uri else resolvedUri
+                val finalUri = resolvedUri.ifBlank { targetedSong.uri }
 
                 if (activePlaylistIndex in activePlaybackQueue.indices) {
                     activePlaybackQueue[activePlaylistIndex] = targetedSong.copy(uri = finalUri)
@@ -251,7 +281,6 @@ class PlayerController(
                     Log.d(TAG, "ExoPlayer track hydrated silently for persistence setup.")
                 }
 
-                // Prefetch next track sequence...
                 val nextIndex = activePlaylistIndex + 1
                 if (nextIndex in activePlaybackQueue.indices) {
                     val nextSong = activePlaybackQueue[nextIndex]
@@ -284,12 +313,12 @@ class PlayerController(
             try {
                 mediaController?.let { controller ->
                     if (controller.isCommandAvailable(Player.COMMAND_SET_TRACK_SELECTION_PARAMETERS)) {
-
+                        //Pass
                     }
 
-                    val args = android.os.Bundle().apply { putBoolean("enabled", enabled) }
+                    val args = Bundle().apply { putBoolean("enabled", enabled) }
                     controller.sendCustomCommand(
-                        androidx.media3.session.SessionCommand("ACTION_SET_SKIP_SILENCE", android.os.Bundle.EMPTY),
+                        SessionCommand("ACTION_SET_SKIP_SILENCE", Bundle.EMPTY),
                         args
                     )
                     Log.d("PlayerController", "Dispatched live Skip Silence event down to service channel: $enabled")
@@ -304,9 +333,9 @@ class PlayerController(
         scope.launch(Dispatchers.Main) {
             try {
                 mediaController?.let { controller ->
-                    val args = android.os.Bundle().apply { putBoolean("enabled", enabled) }
+                    val args = Bundle().apply { putBoolean("enabled", enabled) }
                     controller.sendCustomCommand(
-                        androidx.media3.session.SessionCommand("ACTION_SET_NORMALIZATION", android.os.Bundle.EMPTY),
+                        SessionCommand("ACTION_SET_NORMALIZATION", Bundle.EMPTY),
                         args
                     )
                     Log.d("PlayerController", "Dispatched live Normalization event down to service channel: $enabled")
@@ -345,5 +374,29 @@ class PlayerController(
     fun release() {
         mediaController?.removeListener(playerListener)
         mediaController = null
+    }
+
+    fun cycleRepeatMode() {
+        val nextMode = when (currentRepeatMode) {
+            RepeatMode.OFF -> RepeatMode.ALL
+            RepeatMode.ALL -> RepeatMode.ONE
+            RepeatMode.ONE -> RepeatMode.OFF
+        }
+        currentRepeatMode = nextMode
+
+        mediaController?.let { player ->
+            when (nextMode) {
+                RepeatMode.OFF -> {
+                    player.repeatMode = Player.REPEAT_MODE_OFF
+                }
+                RepeatMode.ALL -> {
+                    player.repeatMode = Player.REPEAT_MODE_ALL
+                }
+                RepeatMode.ONE -> {
+                    player.repeatMode = Player.REPEAT_MODE_ONE
+                }
+            }
+        }
+        Log.d("PLAYER_CONTROLLER", "Playback Repeat Mode updated to: $nextMode")
     }
 }
