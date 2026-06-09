@@ -36,19 +36,16 @@ class YouTubeAudioExtractor {
             val url = "https://www.youtube.com/watch?v=$finalVideoId"
             val info = StreamInfo.getInfo(ServiceList.YouTube, url)
 
-            // ─── 🛠️ ENHANCED FALLBACK STREAM RESOLUTION ───
-            // Step 1: Try to grab pure high-bitrate audio streams first
             var targetStreamUrl = info.audioStreams
                 ?.filter { !it.url.isNullOrBlank() }
                 ?.maxByOrNull { it.bitrate }
                 ?.url
 
-            // Step 2: Fallback to mixed video/audio streams if pure audio arrays are empty
             if (targetStreamUrl.isNullOrBlank()) {
                 Log.d(TAG, "Pure audio streams empty for $finalVideoId. Attempting video stream fallback...")
                 targetStreamUrl = info.videoStreams
                     ?.filter { !it.url.isNullOrBlank() }
-                    ?.minByOrNull { it.bitrate } // Grab lowest video bitrate to save user bandwidth
+                    ?.minByOrNull { it.bitrate }
                     ?.url
             }
 
@@ -68,7 +65,8 @@ class YouTubeAudioExtractor {
                 artUri = artworkUrl,
                 duration = info.duration * 1000L,
                 isStreaming = true,
-                folderName = "YouTube Stream"
+                folderName = "YouTube Stream",
+                type = "yt"
             )
 
         } catch (e: Exception) {
