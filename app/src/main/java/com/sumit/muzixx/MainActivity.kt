@@ -1,6 +1,7 @@
 package com.sumit.muzixx
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -51,6 +52,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val musicViewModel: MusicViewModel by viewModels()
 
+    @SuppressLint("NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
