@@ -88,6 +88,25 @@ class PlayerController(
                 if (matchedSong.uri.isBlank()) {
                     resolveAndPlayTrackOnDemand(matchedSong, exoIndex)
                 }
+
+                val lookAheadIndex = exoIndex + 1
+                if (lookAheadIndex in activePlaybackQueue.indices) {
+                    val nextSong = activePlaybackQueue[lookAheadIndex]
+                    if (nextSong.uri.isBlank()) {
+                        scope.launch {
+                            val nextUri = withContext(Dispatchers.IO) { resolveSongUri(nextSong) }
+                            if (nextUri.isNotBlank()) {
+                                withContext(Dispatchers.Main) {
+                                    if (lookAheadIndex in activePlaybackQueue.indices && activePlaybackQueue[lookAheadIndex].id == nextSong.id) {
+                                        activePlaybackQueue[lookAheadIndex] = nextSong.copy(uri = nextUri)
+                                        controller.replaceMediaItem(lookAheadIndex, buildMediaItem(activePlaybackQueue[lookAheadIndex], nextUri))
+                                        Log.d(TAG, "Continuous prefetch engine: Prepared index $lookAheadIndex ahead of time.")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             totalDuration = controller.duration.coerceAtLeast(0L)
@@ -210,7 +229,13 @@ class PlayerController(
                         activePlaybackQueue[engineIndex] = song.copy(uri = resolvedUri)
 
                         val updatedMediaItem = buildMediaItem(activePlaybackQueue[engineIndex], resolvedUri)
+                        val isCurrentTrack = controller.currentMediaItemIndex == engineIndex
                         controller.replaceMediaItem(engineIndex, updatedMediaItem)
+                        if (isCurrentTrack) {
+                            controller.prepare()
+                            controller.play()
+                            Log.d(TAG, "Forced Media3 pipeline kickstart for on-demand resolved track.")
+                        }
                     }
                 }
             }
