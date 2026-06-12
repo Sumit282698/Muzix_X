@@ -57,7 +57,7 @@ fun HomeScreen(
 
     val trending = viewModel.saavnTrendingSongs
     val newReleases = viewModel.saavnNewReleases
-    val hindiHits = viewModel.saavnHindiHits
+    val hindiHits = viewModel.saavnHminiHits
     val local = viewModel.songs
     val selectedSong = viewModel.selectedSong
 

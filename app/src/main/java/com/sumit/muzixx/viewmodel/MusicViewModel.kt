@@ -23,6 +23,7 @@ import com.sumit.muzixx.data.network.UpdateChecker
 import com.sumit.muzixx.data.model.toSong
 import com.sumit.muzixx.data.network.YouTubeAudioExtractor
 import com.sumit.muzixx.data.network.YouTubeMusicScraper
+import com.sumit.muzixx.utils.NetworkUtils.isWifiConnected
 import kotlinx.coroutines.*
 
 class MusicViewModel : ViewModel() {
@@ -37,6 +38,7 @@ class MusicViewModel : ViewModel() {
     private val playlistController by lazy { PlaylistController(onSavePlaylists = { savePlaylistsToStorage() }) }
     private val jioSaavnApiService by lazy { JioSaavnApiService.create() }
     private var sharedPreferences: SharedPreferences? = null
+    private var applicationContext: Context? = null
 
     //EXPOSED PLAYER STATES
     val isPlaying get() = playerController.isPlaying
@@ -45,7 +47,6 @@ class MusicViewModel : ViewModel() {
     val totalDuration get() = mediaStateHolder.totalDuration
     val currentRepeatMode get() = playerController.currentRepeatMode
 
-//    val mediaController get() = playerController.mediaController
     val activePlaylistIndex get() = playerController.activePlaylistIndex
     val activePlaybackQueue get() = playerController.activePlaybackQueue
 
@@ -106,7 +107,7 @@ class MusicViewModel : ViewModel() {
     val searchResults = mutableStateListOf<Song>()
     val saavnTrendingSongs = mutableStateListOf<Song>()
     val saavnNewReleases = mutableStateListOf<Song>()
-    val saavnHindiHits = mutableStateListOf<Song>()
+    val saavnHminiHits = mutableStateListOf<Song>()
     val saavnSearchResults = mutableStateListOf<Song>()
     val saavnPlaylistSearchResults = mutableStateListOf<com.sumit.muzixx.data.model.SaavnCloudPlaylistObject>()
     var currentCloudPlaylistName by mutableStateOf<String?>(null)
@@ -133,9 +134,10 @@ class MusicViewModel : ViewModel() {
         get() = playlistController.selectedPlaylist
         set(value) { playlistController.selectedPlaylist = value }
 
-    // ========================= SUBSYSTEM INITIALIZERS =========================
+    //Settings
     fun initSettings(context: Context) {
         if (::settings.isInitialized) return
+        this.applicationContext = context.applicationContext
         settings = SettingsRepository(context.applicationContext, viewModelScope)
     }
 
@@ -145,14 +147,17 @@ class MusicViewModel : ViewModel() {
 
     fun initStatsManager(context: Context) {
         if (::stats.isInitialized) return
+        this.applicationContext = context.applicationContext
         stats = PlaybackStatsRepository(context.applicationContext, viewModelScope)
     }
 
     fun initMediaController(context: Context) {
+        this.applicationContext = context.applicationContext
         playerController.initMediaController(context)
     }
 
     fun initStorage(context: Context) {
+        this.applicationContext = context.applicationContext
         sharedPreferences = context.getSharedPreferences("muzix_prefs", Context.MODE_PRIVATE)
         try {
             val json = sharedPreferences?.getString("custom_playlists", null)
@@ -199,15 +204,8 @@ class MusicViewModel : ViewModel() {
         val folderName = sharedPreferences?.getString("last_song_folder", "Unknown") ?: "Unknown"
         val type = sharedPreferences?.getString("last_song_type", "local") ?: "local"
         return Song(
-            id = id,
-            title = title,
-            artist = artist,
-            uri = uri,
-            artUri = artUri,
-            duration = duration,
-            isStreaming = isStreaming,
-            folderName = folderName,
-            type = type
+            id = id, title = title, artist = artist, uri = uri, artUri = artUri,
+            duration = duration, isStreaming = isStreaming, folderName = folderName, type = type
         )
     }
 
@@ -263,7 +261,6 @@ class MusicViewModel : ViewModel() {
         }
     }
 
-    //Data Searcher
     fun searchJioSaavn(query: String) {
         if (query.isBlank()) return
         viewModelScope.launch {
@@ -328,15 +325,15 @@ class MusicViewModel : ViewModel() {
 
                 val trendingSongsList = trendingDeferred.await()?.data?.songs?.map { it.toSong("JioSaavn Trending") } ?: emptyList()
                 val releasesSongsList = newReleasesDeferred.await()?.data?.songs?.map { it.toSong("JioSaavn New Releases") } ?: emptyList()
-                val hindiHitsSongsList = hindiHitsDeferred.await()?.data?.songs?.map { it.toSong("Hindi Hits") } ?: emptyList()
+                val hmList = hindiHitsDeferred.await()?.data?.songs?.map { it.toSong("Hindi Hits") } ?: emptyList()
 
                 withContext(Dispatchers.Main) {
                     saavnTrendingSongs.clear()
                     saavnTrendingSongs.addAll(trendingSongsList)
                     saavnNewReleases.clear()
                     saavnNewReleases.addAll(releasesSongsList)
-                    saavnHindiHits.clear()
-                    saavnHindiHits.addAll(hindiHitsSongsList)
+                    saavnHminiHits.clear()
+                    saavnHminiHits.addAll(hmList)
                 }
             } catch (e: Exception) {
                 Log.e("SAAVN_HOME_ERROR", "Failed to load curated home grids: ${e.message}")
@@ -426,6 +423,15 @@ class MusicViewModel : ViewModel() {
         val totalQueueLength = activePlaybackQueue.size
 
         if (currentIndex >= totalQueueLength - 2) {
+            if (isSettingsInitialized() && settings.streamWifiOnly) {
+                applicationContext?.let { ctx ->
+                    if (!isWifiConnected(ctx)) {
+                        Log.d("INFINITE_AUTOPLAY", "Autoplay cancelled: Device is on cellular data.")
+                        return
+                    }
+                }
+            }
+
             if (currentSong.id.all { it.isDigit() } || currentSong.artist.contains("JioSaavn") || currentSong.title.contains("JioSaavn")) {
                 viewModelScope.launch(Dispatchers.IO) {
                     try {
@@ -472,7 +478,7 @@ class MusicViewModel : ViewModel() {
         }
     }
 
-    // ========================= PLAYLIST MANIPULATION =========================
+    //Playlist Controlling
     fun createCustomPlaylist(name: String) = playlistController.createCustomPlaylist(name)
     fun addSongToPlaylist(playlistId: String, song: Song) = playlistController.addSongToPlaylist(playlistId, song)
     fun removeSongFromPlaylist(playlistId: String, song: Song) = playlistController.removeSongFromPlaylist(playlistId, song)
