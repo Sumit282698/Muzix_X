@@ -137,7 +137,9 @@ fun SearchScreen(
                         else -> SongResultsList(
                             songs = saavnResults,
                             bottomPadding = bottomPadding,
-                            onSongClick = { index -> viewModel.playSaavnSong(saavnResults, index) },
+                            onSongClick = { index ->
+                                viewModel.playSearchResultWithAutoplay(saavnResults, index)
+                            },
                             onAddClick = { song -> activeSongForPlaylist = song }
                         )
                     }
@@ -148,7 +150,9 @@ fun SearchScreen(
                         else -> SongResultsList(
                             songs = youtubeResults,
                             bottomPadding = bottomPadding,
-                            onSongClick = { index -> viewModel.playYouTubeSong(youtubeResults, index) },
+                            onSongClick = { index ->
+                                viewModel.playYouTubeSearchResultWithAutoplay(youtubeResults, index)
+                            },
                             onAddClick = { song -> activeSongForPlaylist = song }
                         )
                     }
