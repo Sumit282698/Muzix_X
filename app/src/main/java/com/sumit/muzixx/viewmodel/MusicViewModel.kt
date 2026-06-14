@@ -417,6 +417,80 @@ class MusicViewModel : ViewModel() {
     fun playYouTubeSong(songList: List<Song>, startIndex: Int) = playMusicCollection(songList, startIndex)
     fun playLocalSong(songList: List<Song>, startIndex: Int) = playMusicCollection(songList, startIndex)
 
+    fun playSearchResultWithAutoplay(searchList: List<Song>, startIndex: Int) {
+        if (searchList.isEmpty() || startIndex !in searchList.indices) return
+
+        val clickedSong = searchList[startIndex]
+
+        viewModelScope.launch {
+            var finalQueue = searchList.toMutableList()
+
+            if (clickedSong.id.all { it.isDigit() }) {
+                try {
+                    val response = withContext(Dispatchers.IO) {
+                        jioSaavnApiService.getSongSuggestions(clickedSong.id, limit = 20)
+                    }
+
+                    if (response.success) {
+                        val recommendations = response.data?.songs?.map {
+                            it.toSong("Autoplay Suggestion")
+                        } ?: emptyList()
+
+                        finalQueue.addAll(recommendations)
+                        Log.d("VM_SEARCH_AUTOPLAY", "Successfully unified queue with ${recommendations.size} recommendations.")
+                    }
+                } catch (e: Exception) {
+                    Log.e("VM_SEARCH_AUTOPLAY", "Failed to fetch background suggestions, falling back to raw list: ${e.message}")
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                playMusicCollection(finalQueue, startIndex)
+            }
+        }
+    }
+
+    fun playYouTubeSearchResultWithAutoplay(youtubeList: List<Song>, startIndex: Int) {
+        if (youtubeList.isEmpty() || startIndex !in youtubeList.indices) return
+
+        val clickedSong = youtubeList[startIndex]
+
+        viewModelScope.launch {
+            val finalQueue = mutableListOf(clickedSong)
+            val newStartIndex = 0
+
+            try {
+                val targetVideoId = clickedSong.id.replace("yt_", "").trim()
+                Log.d("VM_YT_AUTOPLAY", "Fetching native NewPipe recommendations for video ID: $targetVideoId")
+
+                val recommendations = ytExtractor.getRelatedSongsFromVideoId(targetVideoId)
+
+                if (recommendations.isNotEmpty()) {
+                    val targetNormalizedId = clickedSong.id.replace("yt_", "").trim()
+                    val targetLowerTitle = clickedSong.title.lowercase().trim()
+
+                    val uniqueRecs = recommendations.filter { rec ->
+                        val recNormalizedId = rec.id.replace("yt_", "").trim()
+                        val recLowerTitle = rec.title.lowercase().trim()
+
+                        val isSameTrack = recNormalizedId == targetNormalizedId || recLowerTitle == targetLowerTitle
+
+                        !isSameTrack
+                    }
+
+                    finalQueue.addAll(uniqueRecs)
+                    Log.d("VM_YT_AUTOPLAY", "Successfully appended ${uniqueRecs.size} high-quality NewPipe related tracks.")
+                }
+            } catch (e: Exception) {
+                Log.e("VM_YT_AUTOPLAY", "Native related item generation block failed cleanly", e)
+            }
+
+            withContext(Dispatchers.Main) {
+                playMusicCollection(finalQueue, newStartIndex)
+            }
+        }
+    }
+
     private fun handleQueueLookaheadAutoplay() {
         val currentSong = selectedSong ?: return
         val currentIndex = activePlaylistIndex
