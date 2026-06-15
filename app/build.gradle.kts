@@ -17,7 +17,7 @@ android {
         //noinspection OldTargetApi
         targetSdk = 36
         versionCode = 2
-        versionName = "1.2.9"
+        versionName = "1.3.0"
 
         multiDexEnabled = true
 
@@ -63,6 +63,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     //noinspection UseTomlInstead,GradleDependency
     implementation("androidx.datastore:datastore-core:1.1.1")
+    //noinspection UseTomlInstead
     implementation("androidx.palette:palette-ktx:1.0.0")
     //noinspection UseTomlInstead,GradleDependency
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -94,7 +95,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.11")
 
     //noinspection UseTomlInstead,NewerVersionAvailable
-    implementation("com.github.teamnewpipe:NewPipeExtractor:0.26.2")
+    implementation("com.github.teamnewpipe:NewPipeExtractor:0.26.3")
 
     //noinspection UseTomlInstead, GradleDependency
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.0.4")
