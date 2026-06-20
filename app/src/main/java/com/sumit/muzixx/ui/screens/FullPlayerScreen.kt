@@ -309,20 +309,35 @@ fun FullPlayerScreen(
                                 leadingIcon = { Icon(Icons.Rounded.LibraryAdd, contentDescription = null)}
                             )
 
-                            DropdownMenuItem(
-                                text = { Text("Download", fontWeight = FontWeight.Medium) },
-                                onClick = {
-                                    showOptionsMenu = false
-                                    if (song != null && viewModel.isSettingsInitialized()) {
-                                        coroutineScope.launch {
-                                            AudioDownloader.downloadTrack(context, song, viewModel.settings)
+                            if (currentSong?.type == "yt" || currentSong?.type == "saavn") {
+                                DropdownMenuItem(
+                                    text = { Text("Download", fontWeight = FontWeight.Medium) },
+                                    onClick = {
+                                        showOptionsMenu = false
+                                        if (song != null && viewModel.isSettingsInitialized()) {
+                                            coroutineScope.launch {
+                                                AudioDownloader.downloadTrack(
+                                                    context,
+                                                    song,
+                                                    viewModel.settings
+                                                )
+                                            }
+                                        } else if (song == null) {
+                                            Toast.makeText(
+                                                context,
+                                                "No active track loaded to download",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
                                         }
-                                    } else if (song == null) {
-                                        Toast.makeText(context, "No active track loaded to download", Toast.LENGTH_SHORT).show()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Rounded.Download,
+                                            contentDescription = null
+                                        )
                                     }
-                                },
-                                leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null)}
-                            )
+                                )
+                            }
 
                             if (currentSong?.type == "yt" || currentSong?.type == "saavn") {
                                 DropdownMenuItem(
