@@ -75,6 +75,7 @@ fun FullPlayerScreen(
     val repeatMode = viewModel.currentRepeatMode
     val accentColor = MaterialTheme.colorScheme.primary
     var showEqualizer by remember { mutableStateOf(false) }
+    val currentSong = viewModel.selectedSong
 
     val defaultAccent = remember { Color(0xFF230305) }
     var dynamicAccentColor by remember { mutableStateOf(defaultAccent) }
@@ -323,13 +324,30 @@ fun FullPlayerScreen(
                                 leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null)}
                             )
 
-                            DropdownMenuItem(
-                                text = { Text("Share", fontWeight = FontWeight.Medium) },
-                                onClick = {
-                                    showOptionsMenu = false
-                                },
-                                leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = null)}
-                            )
+                            if (currentSong?.type == "yt" || currentSong?.type == "saavn") {
+                                DropdownMenuItem(
+                                    text = { Text("Share", fontWeight = FontWeight.Medium) },
+                                    onClick = {
+                                        showOptionsMenu = false
+                                        currentSong.let { song ->
+                                            val shareUrl = "https://muzixx1.github.io/MuzixX/share?id=${song.id}&title=${android.net.Uri.encode(song.title)}&artist=${android.net.Uri.encode(song.artist)}&art=${
+                                                android.net.Uri.encode(
+                                                    song.artUri
+                                                )
+                                            }"
+
+                                            val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Check out this track!")
+                                                putExtra(android.content.Intent.EXTRA_TEXT, "🎵 Now playing *${song.title}* on MuzixX:\n\n$shareUrl")
+                                            }
+
+                                            context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Track Via"))
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Rounded.Share, contentDescription = "Share Button Component Link Tracker") }
+                                )
+                            }
                         }
                     }
                 }

@@ -44,6 +44,7 @@ import org.schabi.newpipe.extractor.NewPipe
 import okhttp3.OkHttpClient
 import com.sumit.muzixx.data.network.MuzixDownloader
 import com.sumit.muzixx.ui.screens.SettingsScreen
+import com.sumit.muzixx.data.Song // Make sure your Song model is imported properly
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -55,6 +56,9 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        intent?.data?.let { uri ->
+            handleIncomingDeepLink(uri)
+        }
 
         musicViewModel.initSettings(applicationContext)
         musicViewModel.initStatsManager(applicationContext)
@@ -220,5 +224,43 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        intent.data?.let { uri ->
+            handleIncomingDeepLink(uri)
+        }
+    }
+    private fun handleIncomingDeepLink(uri: android.net.Uri) {
+        if ((uri.scheme == "muzixx" || uri.scheme == "https") && uri.pathContainsShare()) {
+            val songId = uri.getQueryParameter("id")
+            val title = uri.getQueryParameter("title") ?: "Unknown Track"
+            val artist = uri.getQueryParameter("artist") ?: "Unknown Artist"
+            val artUri = uri.getQueryParameter("art") ?: ""
+
+            if (!songId.isNullOrBlank()) {
+                val sharedSong = Song(
+                    id = songId,
+                    title = title,
+                    artist = artist,
+                    uri = "",
+                    artUri = artUri,
+                    duration = 0,
+                    isStreaming = true,
+                    folderName = "",
+                    type = if (songId.startsWith("yt_")) "yt" else "saavn"
+                )
+
+                lifecycleScope.launch {
+                    kotlinx.coroutines.delay(600)
+                    musicViewModel.playMusicCollection(listOf(sharedSong), 0)
+                }
+            }
+        }
+    }
+
+    private fun android.net.Uri.pathContainsShare(): Boolean {
+        return this.host == "share" || this.path?.contains("share") == true
     }
 }

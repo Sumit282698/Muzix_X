@@ -46,6 +46,7 @@ class MusicViewModel : ViewModel() {
     val currentPosition get() = mediaStateHolder.currentPosition
     val totalDuration get() = mediaStateHolder.totalDuration
     val currentRepeatMode get() = playerController.currentRepeatMode
+    val currentVolume get() = playerController.currentVolume
 
     val activePlaylistIndex get() = playerController.activePlaylistIndex
     val activePlaybackQueue get() = playerController.activePlaybackQueue
@@ -493,6 +494,60 @@ class MusicViewModel : ViewModel() {
                 playMusicCollection(finalQueue, newStartIndex)
             }
         }
+    }
+    //Eqz Settings
+    fun setEqualizerPresetLive(presetIndex: Short) {
+        if (isSettingsInitialized()) {
+            settings.updateEqPresetIndex(presetIndex.toInt()) { resolvedIndex ->
+                playerController.setEqualizerPreset(resolvedIndex)
+            }
+        } else {
+            playerController.setEqualizerPreset(presetIndex)
+        }
+    }
+
+    fun setEqualizerEnabled(enabled: Boolean) {
+        if (isSettingsInitialized()) {
+            settings.updateEqEnabled(enabled) { resolvedToggle ->
+                playerController.setEqualizerEnabled(resolvedToggle)
+            }
+        } else {
+            playerController.setEqualizerEnabled(enabled)
+        }
+    }
+
+    fun setBandLevel(bandIndex: Int, dbValue: Float) {
+        if (isSettingsInitialized()) {
+            settings.updateSingleBand(bandIndex, dbValue) { idx, db ->
+                playerController.setBandLevel(idx, db)
+            }
+        } else {
+            playerController.setBandLevel(bandIndex, dbValue)
+        }
+    }
+
+    fun setBassBoostEnabled(enabled: Boolean) {
+        if (isSettingsInitialized()) {
+            settings.updateBassEnabled(enabled) { resolvedToggle ->
+                playerController.setBassBoostEnabled(resolvedToggle)
+            }
+        } else {
+            playerController.setBassBoostEnabled(enabled)
+        }
+    }
+
+    fun setBassBoostStrength(strengthPercent: Float) {
+        if (isSettingsInitialized()) {
+            settings.updateBassStrength(strengthPercent) { resolvedStrength ->
+                playerController.setBassBoostStrength(resolvedStrength)
+            }
+        } else {
+            playerController.setBassBoostStrength(strengthPercent)
+        }
+    }
+
+    fun setMasterVolume(volumePercent: Float) {
+        playerController.setMasterVolume(volumePercent)
     }
 
     fun loadSearchHistory() {

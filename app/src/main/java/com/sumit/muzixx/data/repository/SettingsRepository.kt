@@ -1,10 +1,12 @@
 package com.sumit.muzixx.data.repository
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.sumit.muzixx.data.manager.SettingsManager
+import com.sumit.muzixx.data.manager.SettingsManager // Ensure this import is here!
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -17,7 +19,7 @@ class SettingsRepository(
 ) {
     private val settingsManager = SettingsManager(context.applicationContext)
 
-    //STATES
+    // CORE APPLICATION STATES
     var streamWifiOnly by mutableStateOf(false)
         private set
     var downloadWifiOnly by mutableStateOf(true)
@@ -37,8 +39,18 @@ class SettingsRepository(
     var appTheme by mutableStateOf("Neon Red")
         private set
 
+    // EXTRA EQUALIZER
+    var eqEnabled by mutableStateOf(true)
+        private set
+    var eqPresetIndex by mutableStateOf(0)
+        private set
+    var bassEnabled by mutableStateOf(false)
+        private set
+    var bassStrength by mutableStateOf(0.0f)
+        private set
+    val eqBands = mutableStateListOf<Float>()
+
     init {
-        // Collect individual preferences asynchronously on initialization
         externalScope.launch(Dispatchers.IO) {
             launch {
                 settingsManager.streamWifiOnlyFlow.collectLatest { value ->
@@ -85,10 +97,40 @@ class SettingsRepository(
                     withContext(Dispatchers.Main) { appTheme = value }
                 }
             }
+
+            //Collect Equalizer States
+            launch {
+                settingsManager.eqEnabledFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { eqEnabled = value }
+                }
+            }
+            launch {
+                settingsManager.eqPresetIndexFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { eqPresetIndex = value }
+                }
+            }
+            launch {
+                settingsManager.bassEnabledFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { bassEnabled = value }
+                }
+            }
+            launch {
+                settingsManager.bassStrengthFlow.collectLatest { value ->
+                    withContext(Dispatchers.Main) { bassStrength = value }
+                }
+            }
+            launch {
+                settingsManager.eqBandsFlow.collectLatest { values ->
+                    withContext(Dispatchers.Main) {
+                        eqBands.clear()
+                        eqBands.addAll(values)
+                    }
+                }
+            }
         }
     }
 
-    //THREAD-SAFE UPDATER
+    // THREAD-SAFE UPDATER FUNCTIONS
     fun updateStreamWifiOnly(value: Boolean) {
         externalScope.launch(Dispatchers.IO) { settingsManager.saveBooleanSetting(SettingsManager.STREAM_WIFI_ONLY, value) }
     }
@@ -114,20 +156,59 @@ class SettingsRepository(
     }
 
     fun updateAudioQuality(value: String) {
-        externalScope.launch(Dispatchers.IO) {
-            settingsManager.saveStringSetting(SettingsManager.AUDIO_QUALITY, value)
-        }
+        externalScope.launch(Dispatchers.IO) { settingsManager.saveStringSetting(SettingsManager.AUDIO_QUALITY, value) }
     }
 
     fun updateUserName(value: String) {
-        externalScope.launch(Dispatchers.IO) {
-            settingsManager.saveStringSetting(SettingsManager.USER_NAME, value)
-        }
+        externalScope.launch(Dispatchers.IO) { settingsManager.saveStringSetting(SettingsManager.USER_NAME, value) }
     }
 
     fun updateAppTheme(value: String) {
+        externalScope.launch(Dispatchers.IO) { settingsManager.saveStringSetting(SettingsManager.APP_THEME, value) }
+    }
+    fun updateEqEnabled(value: Boolean, onHardwareUpdate: (Boolean) -> Unit) {
         externalScope.launch(Dispatchers.IO) {
-            settingsManager.saveStringSetting(SettingsManager.APP_THEME, value)
+            settingsManager.saveBooleanSetting(SettingsManager.EQ_ENABLED, value)
+            withContext(Dispatchers.Main) { onHardwareUpdate(value) }
+        }
+    }
+
+    fun updateEqPresetIndex(value: Int, onHardwareUpdate: (Short) -> Unit) {
+        externalScope.launch(Dispatchers.IO) {
+            settingsManager.saveIntSetting(SettingsManager.EQ_PRESET_INDEX, value)
+            withContext(Dispatchers.Main) { onHardwareUpdate(value.toShort()) }
+        }
+    }
+
+    fun updateBassEnabled(value: Boolean, onHardwareUpdate: (Boolean) -> Unit) {
+        externalScope.launch(Dispatchers.IO) {
+            settingsManager.saveBooleanSetting(SettingsManager.BASS_ENABLED, value)
+            withContext(Dispatchers.Main) { onHardwareUpdate(value) }
+        }
+    }
+
+    fun updateBassStrength(value: Float, onHardwareUpdate: (Float) -> Unit) {
+        externalScope.launch(Dispatchers.IO) {
+            settingsManager.saveFloatSetting(SettingsManager.BASS_STRENGTH, value)
+            withContext(Dispatchers.Main) { onHardwareUpdate(value) }
+        }
+    }
+
+    fun updateSingleBand(index: Int, dbValue: Float, onHardwareUpdate: (Int, Float) -> Unit) {
+        if (index in 0 until eqBands.size) {
+            eqBands[index] = dbValue
+        }
+        val bandsSnapshot = eqBands.toList()
+        externalScope.launch(Dispatchers.IO) {
+            try {
+                settingsManager.saveEqBands(bandsSnapshot)
+
+                withContext(Dispatchers.Main) {
+                    onHardwareUpdate(index, dbValue)
+                }
+            } catch (e: Exception) {
+                Log.e("SETTINGS_REPO", "Failed to save band array parameters to disk storage", e)
+            }
         }
     }
 }
