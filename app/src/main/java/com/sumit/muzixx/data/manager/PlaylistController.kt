@@ -26,12 +26,12 @@ class PlaylistController(private val onSavePlaylists: () -> Unit) {
 
             savedPlaylists.forEach { playlist ->
                 val cleanedSongs = playlist.songs.map { song ->
-                    val resolvedType = if (song.type.isNullOrBlank()) {
+                    val resolvedType = song.type.ifBlank {
                         if (song.id.startsWith("yt_") || song.folderName == "YouTube Search Match") "yt"
-                        else if (song.id.trim().substringBefore("_").all { it.isDigit() } || song.folderName == "JioSaavn Stream") "saavn"
+                        else if (song.id.trim().substringBefore("_")
+                                .all { it.isDigit() } || song.folderName == "JioSaavn Stream"
+                        ) "saavn"
                         else "local"
-                    } else {
-                        song.type
                     }
 
                     song.copy(uri = "", type = resolvedType, isStreaming = resolvedType != "local")
