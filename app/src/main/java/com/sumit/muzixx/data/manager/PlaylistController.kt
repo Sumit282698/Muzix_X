@@ -55,26 +55,31 @@ class PlaylistController(private val onSavePlaylists: () -> Unit) {
     }
 
     fun createCustomPlaylist(name: String) {
-        if (name.isNotBlank()) {
-            val newPlaylist = Playlist(id = UUID.randomUUID().toString(), name = name, songs = emptyList())
-            playlists.add(newPlaylist)
-            onSavePlaylists()
-        }
+        if (name.isBlank()) return
+
+        val newPlaylist = Playlist(
+            id = UUID.randomUUID().toString(),
+            name = name.trim(),
+            songs = emptyList()
+        )
+        playlists.add(newPlaylist)
+        onSavePlaylists()
     }
 
     fun addSongToPlaylist(playlistId: String, song: Song) {
         val index = playlists.indexOfFirst { it.id == playlistId }
-        if (index != -1) {
-            val targetPlaylist = playlists[index]
-            if (!targetPlaylist.songs.any { it.id == song.id }) {
-                val songToSave = song.copy(uri = "", type = song.type)
-                val updatedSongs = targetPlaylist.songs + songToSave
-                playlists[index] = targetPlaylist.copy(songs = updatedSongs)
-                onSavePlaylists()
+        if (index == -1) return
 
-                if (selectedPlaylist?.id == playlistId) {
-                    selectedPlaylist = playlists[index]
-                }
+        val targetPlaylist = playlists[index]
+
+        if (!targetPlaylist.songs.any { it.id == song.id }) {
+            val updatedSongs = targetPlaylist.songs + song
+
+            val updatedPlaylist = targetPlaylist.copy(songs = updatedSongs)
+            playlists[index] = updatedPlaylist
+            onSavePlaylists()
+            if (selectedPlaylist?.id == playlistId) {
+                selectedPlaylist = updatedPlaylist
             }
         }
     }
