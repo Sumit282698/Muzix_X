@@ -62,7 +62,6 @@ fun IntegrationScreen(
                 )
             }
 
-            // Spotify Integration Option
             item {
                 IntegrationCard(
                     title = "Import Spotify Playlist",
@@ -74,7 +73,6 @@ fun IntegrationScreen(
                 )
             }
 
-            // YouTube Music Integration Option
             item {
                 IntegrationCard(
                     title = "Import YouTube Music Playlist",
@@ -86,7 +84,6 @@ fun IntegrationScreen(
                 )
             }
 
-            // YouTube Integration Option
             item {
                 IntegrationCard(
                     title = "Import YouTube Playlist",
