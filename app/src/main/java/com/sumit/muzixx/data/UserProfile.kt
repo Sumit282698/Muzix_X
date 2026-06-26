@@ -5,6 +5,8 @@ data class UserProfile(
     val name: String = "",
     val username: String = "",
     val email: String = "",
+    val playlistsCount: Int = 0,
+    val songsCount: Int = 0,
     val gender: String = "Prefer Not to Say",
     val totalSongsHeard: Int = 0,
     val monthlySongsHeard: Int = 0,
