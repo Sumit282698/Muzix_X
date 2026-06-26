@@ -25,6 +25,7 @@ class SettingsManager(private val context: Context) {
         val CHECK_UPDATES_ON_START = booleanPreferencesKey("check_updates_on_start")
         val AUDIO_QUALITY = stringPreferencesKey("audio_quality")
         val USER_NAME = stringPreferencesKey("user_name")
+        val USER_GENDER = stringPreferencesKey("user_gender")
         val APP_THEME = stringPreferencesKey("app_theme")
 
         //Equalizer PERSISTENCE Keys
@@ -44,7 +45,7 @@ class SettingsManager(private val context: Context) {
     val audioQualityFlow: Flow<String> = context.dataStore.data.map { it[AUDIO_QUALITY] ?: "320kbps" }
     val userNameFlow: Flow<String> = context.dataStore.data.map { it[USER_NAME] ?: "User" }
     val appThemeFlow: Flow<String> = context.dataStore.data.map { it[APP_THEME] ?: "Neon Red" }
-
+    val userGenderFlow: Flow<String> = context.dataStore.data.map { it[USER_GENDER] ?: "Prefer Not to Say" }
     val eqEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[EQ_ENABLED] ?: true }
     val eqPresetIndexFlow: Flow<Int> = context.dataStore.data.map { it[EQ_PRESET_INDEX] ?: 0 }
     val bassEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[BASS_ENABLED] ?: false }

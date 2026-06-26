@@ -36,6 +36,7 @@ class SettingsRepository(
         private set
     var userName by mutableStateOf("User")
         private set
+    var userGender by mutableStateOf("Prefer Not to Say")
     var appTheme by mutableStateOf("Neon Red")
         private set
 
@@ -161,6 +162,9 @@ class SettingsRepository(
 
     fun updateUserName(value: String) {
         externalScope.launch(Dispatchers.IO) { settingsManager.saveStringSetting(SettingsManager.USER_NAME, value) }
+    }
+    fun updateUserGender(value: String) {
+        externalScope.launch(Dispatchers.IO) { settingsManager.saveStringSetting(SettingsManager.USER_GENDER, value) }
     }
 
     fun updateAppTheme(value: String) {
