@@ -8,7 +8,7 @@ An elegant, high-performance Android music streaming and local playback applicat
 
 ---
 
-## 🚀 Features
+## Features
 
 * **Hybrid Playback:** Seamlessly switch between an offline local music player and online streaming.
 * **YouTube Music Integration:** Fetches and streams online tracks directly using robust extraction pipelines.
@@ -16,10 +16,12 @@ An elegant, high-performance Android music streaming and local playback applicat
 * **Premium UI/UX:** Ad-free, clean interface styled with an immersive dark theme blending deep blacks and vivid reds.
 * **Advanced Playback Controls:** Full support for repeat-all, repeat-single-track, shuffling, and interactive persistent state queues.
 * **Auto-Update System:** Built-in dynamic update checker that syncs with GitHub releases to keep the application up to date automatically.
+* **Cloud User Songs Data Saving:** It's a System From Firebase Which Takes Data Like Email,username,Songs Heard, Total Songs Heard, Total local Songs and Playlists.
+* **Integrations:** like: Spotify, Yt for importing Playlists
 
 ---
 
-## 📱 App Screenshots
+## App Screenshots
 
 | Home Screen & Discovery | Active Player UI | Profile Screen |
 | :---: | :---: | :---: |
@@ -27,7 +29,7 @@ An elegant, high-performance Android music streaming and local playback applicat
 
 ---
 
-## 🛠️ Tech Stack & Specifications
+## Tech Stack & Specifications
 
 * **Development Environment:** Android Studio (Kotlin / Jetpack Compose)
 * **Minimum Architecture:** Android 7.0 (API Level 24) or higher
@@ -37,7 +39,7 @@ An elegant, high-performance Android music streaming and local playback applicat
 
 ---
 
-## 📦 Installation & Download
+## Installation & Download
 
 * Some Older Releases are Removed.
 * To install the latest stable production build, head directly over to the releases section or click the link below:
