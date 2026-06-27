@@ -178,6 +178,7 @@ class MusicViewModel : ViewModel() {
                 playerController.selectedSong = lastSong
                 playerController.submitQueueToPlayer(listOf(lastSong), 0, playWhenReady = false)
                 playerController.preparePlayerEngine()
+                autoRebuildQueueOnRestart(lastSong)
 
                 val savedProgress = sharedPreferences?.getLong("last_song_playback_position", 0L) ?: 0L
                 if (savedProgress > 0L) {
@@ -186,6 +187,68 @@ class MusicViewModel : ViewModel() {
             } else {
                 currentPlaybackQueue = emptyList()
                 Log.d("INIT_STORAGE", "First time launch or clear cache sequence triggered.")
+            }
+        }
+    }
+
+    private fun autoRebuildQueueOnRestart(currentSong: Song) {
+        if (currentSong.type.lowercase().trim() == "local") return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                Log.d("MuzixX_BootAutoplay", "Cold boot building queue for: ${currentSong.title}")
+                val combinedQueue = mutableListOf(currentSong)
+
+                val isJioSaavn = currentSong.id.all { it.isDigit() } ||
+                        currentSong.artist.contains("JioSaavn") ||
+                        currentSong.title.contains("JioSaavn")
+
+                if (isJioSaavn) {
+                    val queryBuilder = StringBuilder(currentSong.title)
+                    if (currentSong.artist.isNotBlank() && currentSong.artist.lowercase() != "unknown") {
+                        queryBuilder.append(" ").append(currentSong.artist)
+                    }
+                    val searchQuery = queryBuilder.toString().trim()
+
+                    Log.d("MuzixX_BootAutoplay", "JioSaavn track detected on boot. Bridging to YouTube via search: $searchQuery")
+
+                    val ytSearchResults = ytScraper.searchSongs(searchQuery)
+                    if (ytSearchResults.isNotEmpty()) {
+                        val firstYtMatch = ytSearchResults.first()
+                        val targetVideoId = firstYtMatch.id.replace("yt_", "").trim()
+
+                        Log.d("MuzixX_BootAutoplay", "Cross-referenced video match found ($targetVideoId). Pulling related recommendations...")
+
+                        val recommendations = ytExtractor.getRelatedSongsFromVideoId(targetVideoId)
+                        val lowerTitle = currentSong.title.lowercase().trim()
+
+                        val uniqueRecs = recommendations.filter { rec ->
+                            rec.title.lowercase().trim() != lowerTitle
+                        }
+                        combinedQueue.addAll(uniqueRecs)
+                    }
+                }
+                else {
+                    val targetVideoId = currentSong.id.replace("yt_", "").trim()
+                    val recommendations = ytExtractor.getRelatedSongsFromVideoId(targetVideoId)
+                    if (recommendations.isNotEmpty()) {
+                        val uniqueRecs = recommendations.filter { rec ->
+                            rec.id.replace("yt_", "").trim() != targetVideoId &&
+                                    rec.title.lowercase().trim() != currentSong.title.lowercase().trim()
+                        }
+                        combinedQueue.addAll(uniqueRecs)
+                    }
+                }
+
+                if (combinedQueue.size > 1) {
+                    withContext(Dispatchers.Main) {
+                        playerController.submitQueueToPlayer(combinedQueue, 0, playWhenReady = false)
+                        currentPlaybackQueue = combinedQueue
+                        Log.d("MuzixX_BootAutoplay", "Boot bridge successful. Injected ${combinedQueue.size - 1} YouTube recommendations behind your JioSaavn track.")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MuzixX_BootAutoplay", "Failed building lookahead stream bridges on startup", e)
             }
         }
     }
@@ -463,35 +526,49 @@ class MusicViewModel : ViewModel() {
     fun playYouTubeSong(songList: List<Song>, startIndex: Int) = playMusicCollection(songList, startIndex)
     fun playLocalSong(songList: List<Song>, startIndex: Int) = playMusicCollection(songList, startIndex)
 
-    fun playSearchResultWithAutoplay(searchList: List<Song>, startIndex: Int) {
-        if (searchList.isEmpty() || startIndex !in searchList.indices) return
+    fun playSaavnSongWithYouTubeAutoplay(saavnList: List<Song>, startIndex: Int) {
+        if (saavnList.isEmpty() || startIndex !in saavnList.indices) return
 
-        val clickedSong = searchList[startIndex]
+        val clickedSaavnSong = saavnList[startIndex]
+        val isolatedQueue = mutableListOf(clickedSaavnSong)
+        playMusicCollection(isolatedQueue, 0)
 
-        viewModelScope.launch {
-            var finalQueue = searchList.toMutableList()
-
-            if (clickedSong.id.all { it.isDigit() }) {
-                try {
-                    val response = withContext(Dispatchers.IO) {
-                        jioSaavnApiService.getSongSuggestions(clickedSong.id, limit = 20)
-                    }
-
-                    if (response.success) {
-                        val recommendations = response.data?.songs?.map {
-                            it.toSong("Autoplay Suggestion")
-                        } ?: emptyList()
-
-                        finalQueue.addAll(recommendations)
-                        Log.d("VM_SEARCH_AUTOPLAY", "Successfully unified queue with ${recommendations.size} recommendations.")
-                    }
-                } catch (e: Exception) {
-                    Log.e("VM_SEARCH_AUTOPLAY", "Failed to fetch background suggestions, falling back to raw list: ${e.message}")
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val queryBuilder = StringBuilder(clickedSaavnSong.title)
+                if (clickedSaavnSong.artist.isNotBlank() && clickedSaavnSong.artist.lowercase() != "unknown") {
+                    queryBuilder.append(" ").append(clickedSaavnSong.artist)
                 }
-            }
+                val searchQuery = queryBuilder.toString().trim()
 
-            withContext(Dispatchers.Main) {
-                playMusicCollection(finalQueue, startIndex)
+                Log.d("SaavnYtBridge", "Searching YouTube for track matching: $searchQuery")
+
+                val ytSearchResults = ytScraper.searchSongs(searchQuery)
+
+                if (ytSearchResults.isNotEmpty()) {
+                    val firstYtMatch = ytSearchResults.first()
+                    val targetVideoId = firstYtMatch.id.replace("yt_", "").trim()
+
+                    Log.d("SaavnYtBridge", "Found YouTube match ($targetVideoId). Fetching related tracks...")
+
+                    val recommendations = ytExtractor.getRelatedSongsFromVideoId(targetVideoId)
+
+                    if (recommendations.isNotEmpty()) {
+                        val lowerTitle = clickedSaavnSong.title.lowercase().trim()
+                        val uniqueRecs = recommendations.filter { rec ->
+                            rec.title.lowercase().trim() != lowerTitle
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            playerController.injectTracksToQueue(uniqueRecs)
+
+                            currentPlaybackQueue = playerController.activePlaybackQueue
+                            Log.d("SaavnYtBridge", "Clean queue setup complete. Appended ${uniqueRecs.size} YouTube tracks behind the isolated track.")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("SaavnYtBridge", "Bridge failed to attach background recommendations cleanly", e)
             }
         }
     }
@@ -651,8 +728,18 @@ class MusicViewModel : ViewModel() {
             } else {
                 viewModelScope.launch(Dispatchers.IO) {
                     try {
-                        val relatedSongs = emptyList<Song>()
-                        withContext(Dispatchers.Main) { playerController.injectTracksToQueue(relatedSongs) }
+                        val targetVideoId = currentSong.id.replace("yt_", "").trim()
+                        Log.d("INFINITE_YT_AUTOPLAY", "Fetching lookahead recommendations for: $targetVideoId")
+
+                        val relatedSongs = ytExtractor.getRelatedSongsFromVideoId(targetVideoId)
+                        if (relatedSongs.isNotEmpty()) {
+                            val uniqueRecs = relatedSongs.filter { rec ->
+                                rec.id.replace("yt_", "").trim() != targetVideoId
+                            }
+                            withContext(Dispatchers.Main) {
+                                playerController.injectTracksToQueue(uniqueRecs)
+                            }
+                        }
                     } catch (e: Exception) {
                         Log.e("INFINITE_YT_AUTOPLAY", "Failed updating related video queue", e)
                     }
