@@ -202,7 +202,7 @@ fun SearchScreen(
         if (activeSongForPlaylist != null) {
             ModalBottomSheet(
                 onDismissRequest = { activeSongForPlaylist = null },
-                containerColor = Color(0xFF0F0F0F),
+                containerColor = MaterialTheme.colorScheme.background,
                 dragHandle = { BottomSheetDefaults.DragHandle(color = Color.White.copy(alpha = 0.2f)) }
             ) {
                 PlaylistSelectorContent(
@@ -264,7 +264,7 @@ fun SongResultsList(
                     Text(
                         text = song.title,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -320,7 +320,7 @@ fun SearchHistoryLayout(
         Text(
             text = "Recent Searches",
             style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -343,7 +343,7 @@ fun SearchHistoryLayout(
                     Text(
                         text = query,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
