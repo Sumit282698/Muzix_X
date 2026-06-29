@@ -27,6 +27,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sumit.muzixx.viewmodel.MusicViewModel
 import androidx.core.net.toUri
+import com.sumit.muzixx.ui.theme.DarkGray
+import com.sumit.muzixx.ui.theme.LightGray
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,9 +38,11 @@ fun SettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val customGrey = remember { Color(0xFF121212) }
-    val customLightGrey = remember { Color(0xFFB3B3B3) }
+    val customGrey = DarkGray
+    val customLightGrey = LightGray
     val accentColor = MaterialTheme.colorScheme.primary
+    val backGroundColor = MaterialTheme.colorScheme.background
+
     var showThemeDialog by remember { mutableStateOf(false) }
 
     val streamOverWifiOnly = viewModel.settings.streamWifiOnly
@@ -69,7 +73,7 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(backGroundColor)
     ) {
         TopAppBar(
             title = {
@@ -84,13 +88,13 @@ fun SettingsScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Black,
-                titleContentColor = Color.White
+                containerColor = MaterialTheme.colorScheme.surface,
+                titleContentColor = MaterialTheme.colorScheme.onSurface
             )
         )
 
@@ -98,7 +102,6 @@ fun SettingsScreen(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 32.dp)
         ) {
-            // ─── SECTION 1: CONTENT & DISPLAY ───
             item { SettingsHeader(title = "Content & Display") }
             item {
                 SettingsSwitchItem(
@@ -112,14 +115,14 @@ fun SettingsScreen(
             item {
                 SettingsClickableItem(
                     title = "Theme Options",
-                    subtitle = "Active Accent: $currentTheme (Pure AMOLED background remains locked)",
+                    subtitle = "Active Accent: $currentTheme",
                     icon = Icons.Default.Palette
                 ) {
                     showThemeDialog = true
                 }
             }
 
-            // ─── SECTION 2: MEDIA QUALITY SETTINGS ───
+            //SECTION 2: MEDIA QUALITY SETTINGS
             item { SettingsHeader(title = "Media Quality Settings") }
             item {
                 SettingsSwitchItem(
@@ -143,7 +146,7 @@ fun SettingsScreen(
                 val qualitySubtitle = when {
                     currentAudioQuality.contains("320") -> "Extreme (320kbps high-fidelity layout standard)"
                     currentAudioQuality.contains("160") -> "Standard (160kbps balanced audio stream setup)"
-                    currentAudioQuality.contains("96")  -> "Data Saver (96kbps low data consumption setup)"
+                    currentAudioQuality.contains("96") -> "Data Saver (96kbps low data consumption setup)"
                     else -> "Standard ($currentAudioQuality standard configuration layout)"
                 }
 
@@ -156,7 +159,7 @@ fun SettingsScreen(
                 }
             }
 
-            // ─── SECTION 3: ADVANCED AUDIO ENGINE ───
+            //SECTION 3: ADVANCED AUDIO ENGINE
             item { SettingsHeader(title = "Audio Engine (Advanced)") }
             item {
                 SettingsSwitchItem(
@@ -177,7 +180,7 @@ fun SettingsScreen(
                 )
             }
 
-            // ─── SECTION 4: STORAGE & CACHE ───
+            //SECTION 4: STORAGE & CACHE
             item { SettingsHeader(title = "Storage & Cache") }
             item {
                 SettingsClickableItem(
@@ -189,7 +192,7 @@ fun SettingsScreen(
                 }
             }
 
-            // ─── SECTION 5: SYSTEM AND UPDATES ───
+            //SECTION 5: SYSTEM AND UPDATES
             item { SettingsHeader(title = "System") }
             item {
                 SettingsSwitchItem(
@@ -210,14 +213,14 @@ fun SettingsScreen(
                 }
             }
 
-            // ─── SECTION 6: ABOUT IN-APP DETAILS ───
+            //SECTION 6: ABOUT
             item { SettingsHeader(title = "About") }
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = customGrey),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Column(
@@ -230,7 +233,7 @@ fun SettingsScreen(
                             Icon(
                                 imageVector = Icons.Default.Info,
                                 contentDescription = null,
-                                tint = accentColor,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -238,16 +241,29 @@ fun SettingsScreen(
                                 text = "MuzixX Player",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
-                        HorizontalDivider(color = Color(0xFF222222))
+                        HorizontalDivider(
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                alpha = 0.12f
+                            )
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        AboutRowItem(label = "Version", value = "v$appVersion", valueColor = accentColor)
-                        AboutRowItem(label = "Build Variant", value = "Release Stable", valueColor = customLightGrey)
+                        AboutRowItem(
+                            label = "Version",
+                            value = "v$appVersion",
+                            valueColor = MaterialTheme.colorScheme.primary
+                        )
+                        AboutRowItem(
+                            label = "Build Variant",
+                            value = "Release Stable",
+                            valueColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+
                         Box(
                             modifier = Modifier.clickable {
                                 val intent = Intent(Intent.ACTION_VIEW, profileUrl.toUri())
@@ -257,16 +273,20 @@ fun SettingsScreen(
                             AboutRowItem(
                                 label = "Developer Architecture",
                                 value = "Sumit Singh",
-                                valueColor = Color.White
+                                valueColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        AboutRowItem(label = "Framework", value = "Jetpack Compose (Android)", valueColor = customLightGrey)
+                        AboutRowItem(
+                            label = "Framework",
+                            value = "Jetpack Compose (Android)",
+                            valueColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
 
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "© 2026 MuzixX Inc. All code execution blocks optimized for high performance playback mechanics.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.DarkGray
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
                     }
                 }
@@ -277,7 +297,12 @@ fun SettingsScreen(
     if (showThemeDialog) {
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
-            title = { Text(text = "Select Accent Color", style = MaterialTheme.typography.titleLarge) },
+            title = {
+                Text(
+                    text = "Select Accent Color",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
             text = {
                 Column(modifier = Modifier.selectableGroup()) {
                     val themeOptions = listOf(
@@ -286,7 +311,8 @@ fun SettingsScreen(
                         "Vibrant Yellow",
                         "Neon Pink / Magenta",
                         "Bright Orange",
-                        "Neon Red"
+                        "Neon Red",
+                        "Match System"
                     )
 
                     themeOptions.forEach { theme ->
@@ -323,15 +349,15 @@ fun SettingsScreen(
         )
     }
 
-    // DYNAMIC AUDIO BITRATE SELECTION DIALOG
+    //DYNAMIC AUDIO BITRATE SELECTION DIALOG
     if (showQualityDialog) {
         AlertDialog(
             onDismissRequest = { showQualityDialog = false },
-            containerColor = Color(0xFF1E1E1E),
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
             title = {
                 Text(
                     text = "Streaming Quality",
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium
                 )
@@ -354,14 +380,28 @@ fun SettingsScreen(
                                 viewModel.settings.updateAudioQuality("96kbps")
                                 showQualityDialog = false
                             },
-                            colors = RadioButtonDefaults.colors(selectedColor = accentColor, unselectedColor = Color.Gray)
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                    alpha = 0.6f
+                                )
+                            )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("Data Saver (96kbps)", color = Color.White, style = MaterialTheme.typography.bodyLarge)
-                            Text("Aggressive data compression saving layout", color = customLightGrey, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                text = "Data Saver (96kbps)",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "Aggressive data compression saving layout",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -378,14 +418,28 @@ fun SettingsScreen(
                                 viewModel.settings.updateAudioQuality("160kbps")
                                 showQualityDialog = false
                             },
-                            colors = RadioButtonDefaults.colors(selectedColor = accentColor, unselectedColor = Color.Gray)
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                    alpha = 0.6f
+                                )
+                            )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("Balanced (160kbps)", color = Color.White, style = MaterialTheme.typography.bodyLarge)
-                            Text("Standard balanced stream performance quality", color = customLightGrey, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                text = "Balanced (160kbps)",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "Standard balanced stream performance quality",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -402,19 +456,35 @@ fun SettingsScreen(
                                 viewModel.settings.updateAudioQuality("320kbps")
                                 showQualityDialog = false
                             },
-                            colors = RadioButtonDefaults.colors(selectedColor = accentColor, unselectedColor = Color.Gray)
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                    alpha = 0.6f
+                                )
+                            )
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("Extreme High (320kbps)", color = Color.White, style = MaterialTheme.typography.bodyLarge)
-                            Text("Crystal clear high-fidelity audio stream", color = customLightGrey, style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                text = "Extreme High (320kbps)",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "Crystal clear high-fidelity audio stream",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showQualityDialog = false }) {
-                    Text("Dismiss", color = accentColor)
+                    Text(
+                        text = "Dismiss",
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         )
@@ -453,7 +523,7 @@ private fun SettingsSwitchItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
@@ -461,13 +531,13 @@ private fun SettingsSwitchItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFB3B3B3),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -477,10 +547,10 @@ private fun SettingsSwitchItem(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
+                checkedThumbColor = MaterialTheme.colorScheme.primaryContainer,
                 checkedTrackColor = MaterialTheme.colorScheme.primary,
-                uncheckedThumbColor = Color.Gray,
-                uncheckedTrackColor = Color(0xFF222222)
+                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         )
     }
@@ -503,7 +573,7 @@ private fun SettingsClickableItem(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(24.dp)
         )
         Spacer(modifier = Modifier.width(16.dp))
@@ -511,13 +581,13 @@ private fun SettingsClickableItem(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFB3B3B3),
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -537,7 +607,7 @@ private fun AboutRowItem(label: String, value: String, valueColor: Color) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFFB3B3B3)
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
         )
         Text(
             text = value,
