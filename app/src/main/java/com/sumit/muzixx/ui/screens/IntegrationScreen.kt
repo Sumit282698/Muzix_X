@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.sumit.muzixx.viewmodel.MusicViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,20 +29,20 @@ fun IntegrationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Integrations", fontSize = 20.sp, fontWeight = FontWeight.Bold) },
+                title = { Text("Integrations", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Go Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = Color.Black,
+        containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         LazyColumn(
@@ -51,13 +50,13 @@ fun IntegrationScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Text(
                     text = "Import your external playlists directly into MuzixX seamlessly.",
-                    color = Color.Gray,
-                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             }
@@ -68,7 +67,7 @@ fun IntegrationScreen(
                     description = "Sync your favorite tracks from public Spotify links.",
                     brandColor = Color(0xFF1DB954),
                     onClick = {
-                        Toast.makeText(context,"Under Development", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Under Development", Toast.LENGTH_SHORT).show()
                     }
                 )
             }
@@ -79,7 +78,7 @@ fun IntegrationScreen(
                     description = "Bring over your specialized streaming queues.",
                     brandColor = Color(0xFFFF0000),
                     onClick = {
-                        Toast.makeText(context,"Under Development", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Under Development", Toast.LENGTH_SHORT).show()
                     }
                 )
             }
@@ -90,7 +89,7 @@ fun IntegrationScreen(
                     description = "Convert video collections directly to standard audio formats.",
                     brandColor = Color(0xFFE62117),
                     onClick = {
-                        Toast.makeText(context,"Under Development", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Under Development", Toast.LENGTH_SHORT).show()
                     }
                 )
             }
@@ -108,9 +107,9 @@ fun IntegrationCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF121212)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         )
     ) {
         Row(
@@ -121,31 +120,31 @@ fun IntegrationCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(width = 4.dp, height = 40.dp)
+                    .size(width = 4.dp, height = 38.dp)
                     .background(brandColor, RoundedCornerShape(2.dp))
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            Column(modifier = Modifier.weight(1.5f)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = Color.White,
-                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
-                    color = Color.Gray,
-                    fontSize = 12.sp
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
 
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.CallReceived,
                 contentDescription = "Import Arrow",
-                tint = Color.Gray,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )
         }
